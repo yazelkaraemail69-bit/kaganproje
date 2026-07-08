@@ -1,4 +1,4 @@
-import { Clapperboard, CreditCard, UtensilsCrossed } from "lucide-react";
+import { Clapperboard, CreditCard, PenLine, UtensilsCrossed } from "lucide-react";
 import { FeatureCard } from "@/components/dashboard/FeatureCard";
 
 export default function DashboardPage() {
@@ -20,7 +20,7 @@ export default function DashboardPage() {
       </section>
 
       <section className="flex-1 py-12 sm:py-16">
-        <div className="container-app grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="container-app grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
           <FeatureCard
             href="/kartvizit"
             icon={CreditCard}
@@ -41,6 +41,13 @@ export default function DashboardPage() {
             title="Shorts Senaryosu Oluştur"
             description="Niş, kitle, ton ve süreyi seçin; yapay zeka hook, ipuçları, CTA, görsel promptlar ve seslendirme metniyle tam bir Shorts senaryosu üretsin."
             accentClassName="bg-gradient-to-br from-slate-700 to-slate-900"
+          />
+          <FeatureCard
+            href="/elyazisi"
+            icon={PenLine}
+            title="El Yazısı Okuyucu ve Çevirici"
+            description="El yazısı fotoğraflarını metne çevirin, düzenleyin, başka dile çevirin ve TXT, PDF veya DOCX olarak kaydedin."
+            accentClassName="bg-gradient-to-br from-violet-500 to-indigo-700"
           />
         </div>
       </section>

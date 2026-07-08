@@ -6,15 +6,14 @@ Bu klasor sizin asil web sitenizdir:
 - Dijital menu olusturma
 - QR kod uretimi
 - Shorts senaryosu ve video (AI)
-
-NOT: Eski altin temali RehberMedia sitesi artik bu klasorde degil.
-O prototip: ../rehbermedia-prototip
+- El yazisi okuyucu ve cevirici (4. modul)
 
 
 HIZLI BASLATMA
 --------------
-1. BASLAT.bat dosyasina cift tiklayin
-2. Tarayici: http://localhost:3000
+1. BASLAT.bat -> http://localhost:3000
+2. El yazisi modulu icin: modules/el-yazisi-cevirmen/BASLAT-ELYAZISI.bat -> port 4000
+3. El yazisi sayfasi: http://localhost:3000/elyazisi
 
 
 ILK KURULUM

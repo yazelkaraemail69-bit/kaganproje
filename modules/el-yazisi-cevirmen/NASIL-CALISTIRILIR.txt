@@ -1,0 +1,28 @@
+EL YAZISI OKUYUCU VE CEVIRICI - MODUL
+=====================================
+
+Kaynak proje: https://github.com/yazelkaraemail69-bit/el-yaz-s-okuyucu-ve-evirici
+
+Bu modul KaganProje ana sitesinde 4. kart olarak /elyazisi adresinde acilir.
+
+
+HIZLI BASLATMA
+--------------
+1. KaganProje sitesi: ust klasorde BASLAT.bat -> http://localhost:3000
+2. El yazisi API: bu klasorde BASLAT-ELYAZISI.bat -> http://localhost:4000
+3. Tarayicida: http://localhost:3000/elyazisi
+
+
+ILK KURULUM
+-----------
+1. backend/.env.example dosyasini .env olarak kopyalayin
+2. OPENROUTER_API_KEY degerini girin (https://openrouter.ai/keys)
+3. BASLAT-ELYAZISI.bat calistirin
+
+
+OZELLIKLER
+----------
+- El yazisi -> metin (en fazla 10 foto)
+- PDF ceviri akisi
+- 5 ucretli AI model
+- TXT / PDF / DOCX disa aktarma

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>El Yazisi Cevirmen</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="header">
+        <h1>El Yazisi Cevirmen</h1>
+        <p id="header-subtitle">Ne yapmak istediginizi secin.</p>
+      </header>
+
+      <div id="setup-banner" class="setup-banner hidden" role="alert">
+        <strong>API anahtari eksik:</strong>
+        OCR ve ceviri calismaz. <code>backend/.env</code> dosyasindaki
+        <code>OPENROUTER_API_KEY</code> degerini
+        <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">openrouter.ai/keys</a>
+        adresinden aldiginiz anahtarla degistirin, ardindan sunucuyu yeniden baslatin.
+      </div>
+
+      <div id="server-banner" class="setup-banner server-banner hidden" role="alert">
+        <strong>Sunucuya baglanilamadi.</strong>
+        Backend kapali olabilir. PowerShell'de su komutlari calistirin:
+        <code>cd backend</code> → <code>npm run dev</code>
+        — ardindan sayfayi yenileyin.
+      </div>
+
+      <nav id="steps-nav" class="steps hidden" aria-label="Adimlar">
+        <button type="button" class="step-tab" data-step="1">1. Yukle</button>
+        <button type="button" class="step-tab" data-step="2">2. Duzenle</button>
+        <button type="button" class="step-tab" data-step="3">3. Cevir</button>
+        <button type="button" class="step-tab" data-step="4">4. Aktar</button>
+      </nav>
+
+      <main>
+        <!-- Adim 0: Akis secimi -->
+        <section id="step-0" class="panel active">
+          <h2>Ne yapmak istiyorsunuz?</h2>
+          <p class="hint">Ihtiyaciniza uygun islemi secin.</p>
+
+          <div class="workflow-grid">
+            <button type="button" class="workflow-card" data-workflow="handwriting">
+              <span class="workflow-icon" aria-hidden="true">✍️</span>
+              <h3>El Yazisini Dijitallestir</h3>
+              <p>
+                El yazisi notlarinizi fotograf cekerek bilgisayar metnine cevirin.
+                TXT, PDF veya DOCX olarak kaydedin. Isterseniz baska dile de cevirin.
+              </p>
+              <span class="workflow-tag">Fotograf → Metin → Dosya</span>
+            </button>
+
+            <button type="button" class="workflow-card" data-workflow="pdf-translate">
+              <span class="workflow-icon" aria-hidden="true">📄</span>
+              <h3>PDF'i Baska Dile Cevir</h3>
+              <p>
+                Metin iceren bir PDF yukleyin, icerigi duzenleyin ve istediginiz dile
+                cevirin. Sonucu TXT, PDF veya DOCX olarak indirin.
+              </p>
+              <span class="workflow-tag">PDF → Ceviri → Dosya</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- Adim 1 -->
+        <section id="step-1" class="panel">
+          <label class="model-picker-label">
+            AI Modeli
+            <select id="ai-model"></select>
+          </label>
+          <p id="model-hint" class="mode-hint"></p>
+
+          <div id="upload-handwriting">
+            <h2>El yazisi fotografi yukleyin</h2>
+            <p class="hint">En fazla 10 fotograf ekleyebilirsiniz. Iyi isikta, net cekim yapin.</p>
+
+            <label class="lang-hint-label">
+              Yazinin dili
+              <select id="source-lang-hint">
+                <option value="tr" selected>Turkce</option>
+                <option value="en">Ingilizce</option>
+                <option value="de">Almanca</option>
+                <option value="fr">Fransizca</option>
+                <option value="es">Ispanyolca</option>
+                <option value="ar">Arapca</option>
+                <option value="">Otomatik algila</option>
+              </select>
+            </label>
+
+            <div class="upload-area">
+              <input type="file" id="image-input" accept="image/*" multiple hidden />
+              <div id="preview-box" class="preview-box empty">
+                <span id="preview-placeholder">Henuz fotograf secilmedi (en fazla 10)</span>
+                <div id="preview-grid" class="preview-grid" hidden></div>
+              </div>
+              <p id="image-count" class="image-count" hidden></p>
+              <button type="button" id="pick-image-btn" class="btn primary">Fotograf Ekle</button>
+              <button type="button" id="clear-images-btn" class="btn secondary full" hidden>Tumunu Temizle</button>
+            </div>
+
+            <button type="button" id="ocr-btn" class="btn primary full" disabled>Metni Tara</button>
+          </div>
+
+          <div id="upload-pdf" hidden>
+            <h2>PDF dosyasi yukleyin</h2>
+            <p class="hint">
+              Metin iceren PDF dosyalari desteklenir. Taranmis (gorsel) PDF'ler icin
+              el yazisi akisini kullanin.
+            </p>
+
+            <div class="upload-area">
+              <input type="file" id="pdf-input" accept="application/pdf,.pdf" hidden />
+              <div id="pdf-preview-box" class="preview-box empty pdf-preview">
+                <span id="pdf-preview-placeholder">Henuz PDF secilmedi</span>
+                <div id="pdf-file-info" class="pdf-file-info" hidden>
+                  <span class="pdf-file-icon" aria-hidden="true">📄</span>
+                  <span id="pdf-file-name"></span>
+                  <span id="pdf-page-count" class="pdf-meta"></span>
+                </div>
+              </div>
+              <button type="button" id="pick-pdf-btn" class="btn primary">PDF Sec</button>
+            </div>
+
+            <button type="button" id="extract-pdf-btn" class="btn primary full" disabled>Metni Cikar</button>
+          </div>
+
+          <button type="button" id="back-to-choice-btn" class="btn secondary full">← Baska islem sec</button>
+          <p id="step1-status" class="status" hidden></p>
+        </section>
+
+        <!-- Adim 2 -->
+        <section id="step-2" class="panel">
+          <h2>Metni duzenleyin</h2>
+          <p id="step2-hint" class="hint">Tarama sonucunu kontrol edip duzeltin.</p>
+
+          <div id="edit-preview-wrap" class="edit-preview-wrap hidden">
+            <p class="hint">Orijinal fotograflar — metni karsilastirarak duzeltin:</p>
+            <div id="edit-preview-grid" class="preview-grid"></div>
+          </div>
+
+          <textarea id="edited-text" rows="14" placeholder="Metin burada gorunecek..."></textarea>
+          <button type="button" id="to-translate-btn" class="btn primary full">Devam Et: Cevir</button>
+        </section>
+
+        <!-- Adim 3 -->
+        <section id="step-3" class="panel">
+          <h2>Cevirin</h2>
+          <p id="step3-hint" class="hint">Kaynak ve hedef dili secin.</p>
+          <div class="row">
+            <label>
+              Kaynak dil
+              <select id="source-lang">
+                <option value="auto">Otomatik Algila</option>
+                <option value="tr">Turkce</option>
+                <option value="en">Ingilizce</option>
+                <option value="de">Almanca</option>
+                <option value="fr">Fransizca</option>
+                <option value="es">Ispanyolca</option>
+              </select>
+            </label>
+            <label>
+              Hedef dil
+              <select id="target-lang">
+                <option value="en">Ingilizce</option>
+                <option value="tr">Turkce</option>
+                <option value="de">Almanca</option>
+                <option value="fr">Fransizca</option>
+                <option value="es">Ispanyolca</option>
+              </select>
+            </label>
+          </div>
+          <button type="button" id="translate-btn" class="btn primary full">Cevir</button>
+          <button type="button" id="skip-translate-btn" class="btn secondary full" hidden>
+            Ceviri yapmadan devam et
+          </button>
+          <div id="translation-result" class="result-box" hidden>
+            <h3>Ceviri</h3>
+            <p id="translated-text"></p>
+          </div>
+          <button type="button" id="to-export-btn" class="btn secondary full" disabled>Devam Et: Disa Aktar</button>
+          <p id="step3-status" class="status" hidden></p>
+        </section>
+
+        <!-- Adim 4 -->
+        <section id="step-4" class="panel">
+          <h2>Disa aktarin</h2>
+          <div class="preview-text">
+            <h3 id="export-original-label">Orijinal</h3>
+            <p id="export-original"></p>
+            <div id="export-translated-section">
+              <h3 id="export-translated-label">Ceviri</h3>
+              <p id="export-translated"></p>
+            </div>
+          </div>
+          <div class="export-buttons">
+            <button type="button" id="export-txt-btn" class="btn primary">TXT indir</button>
+            <button type="button" id="export-pdf-btn" class="btn primary">PDF yazdir / kaydet</button>
+            <button type="button" id="export-docx-btn" class="btn primary">DOCX indir</button>
+          </div>
+          <button type="button" id="restart-btn" class="btn secondary full">Yeni Dokuman</button>
+          <p id="step4-status" class="status" hidden></p>
+        </section>
+      </main>
+    </div>
+
+    <div id="print-area" class="print-only" hidden></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="/config.js"></script>
+    <script src="/app.js"></script>
+  </body>
+</html>

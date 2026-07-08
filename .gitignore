@@ -43,3 +43,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# el-yazisi modul backend
+modules/**/node_modules/
+modules/**/.env
