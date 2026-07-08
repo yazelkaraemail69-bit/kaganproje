@@ -1,0 +1,31 @@
+KAGANPROJE - DIJITAL KARTVIZIT VE MENU
+======================================
+
+Bu klasor sizin asil web sitenizdir:
+- Dijital kartvizit olusturma
+- Dijital menu olusturma
+- QR kod uretimi
+- Shorts senaryosu ve video (AI)
+
+NOT: Eski altin temali RehberMedia sitesi artik bu klasorde degil.
+O prototip: ../rehbermedia-prototip
+
+
+HIZLI BASLATMA
+--------------
+1. BASLAT.bat dosyasina cift tiklayin
+2. Tarayici: http://localhost:3000
+
+
+ILK KURULUM
+-----------
+1. Node.js LTS kurun: https://nodejs.org
+2. .env.example dosyasini .env.local olarak kopyalayin
+3. Shorts ozellikleri icin OPENROUTER_API_KEY ve ELEVENLABS_API_KEY ekleyin
+   (Kartvizit ve menu icin API anahtari gerekmez)
+
+
+GITHUB
+------
+Repo: https://github.com/yazelkaraemail69-bit/kaganproje
+Yukleme: GITHUB-PUSH.bat

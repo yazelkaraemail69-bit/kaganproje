@@ -1,0 +1,25 @@
+/**
+ * Runs `fn` over `items` with at most `limit` calls in flight at once.
+ * Needed because providers like ElevenLabs cap concurrent requests per
+ * account (free/starter tiers often allow only 2-3), and Runway/OpenRouter
+ * benefit from the same throttling to avoid tripping rate limits.
+ */
+export async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex++;
+      results[currentIndex] = await fn(items[currentIndex], currentIndex);
+    }
+  }
+
+  const workerCount = Math.max(1, Math.min(limit, items.length));
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
+}
