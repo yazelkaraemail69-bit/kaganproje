@@ -20,8 +20,9 @@ ILK KURULUM
 -----------
 1. Node.js LTS kurun: https://nodejs.org
 2. .env.example dosyasini .env.local olarak kopyalayin
-3. Shorts ozellikleri icin OPENROUTER_API_KEY ve ELEVENLABS_API_KEY ekleyin
-   (Kartvizit ve menu icin API anahtari gerekmez)
+3. OPENROUTER_API_KEY degerini ekleyin (https://openrouter.ai/keys)
+   Bu tek anahtar Shorts (3) ve El Yazisi (4) modullerine otomatik aktarilir.
+4. BASLAT.bat calistirin (sync-env otomatik calisir)
 
 
 GITHUB

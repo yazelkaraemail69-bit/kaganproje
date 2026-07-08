@@ -1,6 +1,14 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+import path from "path";
 import { z } from "zod";
 import { isPlaceholderApiKey } from "../utils/openRouterErrors";
+
+// Tek API anahtari: once kaganproje kokundeki .env.local okunur
+const backendRoot = path.resolve(__dirname, "../..");
+const kaganProjeRoot = path.resolve(backendRoot, "../..");
+dotenv.config({ path: path.join(kaganProjeRoot, ".env.local") });
+dotenv.config({ path: path.join(kaganProjeRoot, ".env") });
+dotenv.config({ path: path.join(backendRoot, ".env") });
 
 const envSchema = z.object({
   PORT: z.coerce.number().default(4000),
@@ -8,7 +16,7 @@ const envSchema = z.object({
   OPENROUTER_SITE_URL: z.string().default("https://example.com"),
   OPENROUTER_APP_NAME: z.string().default("El Yazisi Cevirmen"),
   APP_SHARED_SECRET: z.string().min(1, "APP_SHARED_SECRET zorunludur"),
-  CORS_ORIGINS: z.string().default("*"),
+  CORS_ORIGINS: z.string().default("http://localhost:3000,http://127.0.0.1:3000"),
 });
 
 function loadEnv() {
@@ -33,7 +41,7 @@ export function logStartupWarnings(): void {
   if (!isOpenRouterConfigured()) {
     console.warn("");
     console.warn("⚠️  UYARI: OPENROUTER_API_KEY henuz ayarlanmamis (ornek deger kullaniliyor).");
-    console.warn("   OCR ve ceviri calismaz. backend/.env dosyasina gercek anahtarinizi yazin:");
+    console.warn("   kaganproje/.env.local dosyasina gercek anahtarinizi yazin:");
     console.warn("   https://openrouter.ai/keys");
     console.warn("");
   }

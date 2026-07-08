@@ -1,4 +1,5 @@
 import type { ShortsConfig, ShortsScript, ShortsSegment } from "@/lib/types";
+import { requireOpenRouterApiKey } from "@/lib/env/openrouter";
 
 const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
@@ -81,10 +82,12 @@ function buildUserPrompt(config: ShortsConfig): string {
  * from the server environment - never expose these to the client.
  */
 export async function generateShortsScript(config: ShortsConfig): Promise<ShortsScript> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
+  let apiKey: string;
+  try {
+    apiKey = requireOpenRouterApiKey("Shorts senaryosu");
+  } catch (error) {
     throw new ShortsGeneratorError(
-      "OPENROUTER_API_KEY tanımlı değil. .env.local dosyanıza ekleyin (Vercel'de ise Environment Variables kısmına) ve sunucuyu yeniden başlatın.",
+      error instanceof Error ? error.message : "OPENROUTER_API_KEY tanimli degil.",
       500
     );
   }

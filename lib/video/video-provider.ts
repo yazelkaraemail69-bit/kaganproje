@@ -1,4 +1,5 @@
 import { VideoGeneratorError } from "@/lib/video/errors";
+import { isOpenRouterConfigured } from "@/lib/env/openrouter";
 import { clampOpenRouterVideoDuration, generateVideoClip as generateOpenRouterClip } from "@/lib/video/openrouter-video";
 import { clampRunwayDuration, generateVideoClip as generateRunwayClip } from "@/lib/video/runway";
 import { clampWanDuration, generateVideoClip as generateWanClip } from "@/lib/video/wan";
@@ -26,10 +27,10 @@ export function resolveVideoProvider(): VideoProviderId {
 
   if (process.env.DASHSCOPE_API_KEY) return "wan";
   if (process.env.RUNWAYML_API_SECRET) return "runway";
-  if (process.env.OPENROUTER_API_KEY) return "openrouter";
+  if (isOpenRouterConfigured()) return "openrouter";
 
   throw new VideoGeneratorError(
-    "Video üretimi için DASHSCOPE_API_KEY (Wan, ucuz), RUNWAYML_API_SECRET (Runway) ya da OPENROUTER_API_KEY (OpenRouter) tanımlı değil.",
+    "Video uretimi icin OPENROUTER_API_KEY (kaganproje/.env.local), DASHSCOPE_API_KEY veya RUNWAYML_API_SECRET gerekli.",
     500
   );
 }

@@ -1,4 +1,5 @@
 import { VideoGeneratorError } from "@/lib/video/errors";
+import { requireOpenRouterApiKey } from "@/lib/env/openrouter";
 
 const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 /** Reused from the script generator: reuses OPENROUTER_API_KEY, no extra provider needed. */
@@ -10,9 +11,14 @@ const DEFAULT_IMAGE_MODEL = "google/gemini-2.5-flash-image";
  * URI ready to hand straight to Runway's `promptImage` field.
  */
 export async function generateSegmentImage(visualPrompt: string): Promise<string> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    throw new VideoGeneratorError("OPENROUTER_API_KEY tanımlı değil.", 500);
+  let apiKey: string;
+  try {
+    apiKey = requireOpenRouterApiKey("Shorts video gorselleri");
+  } catch (error) {
+    throw new VideoGeneratorError(
+      error instanceof Error ? error.message : "OPENROUTER_API_KEY tanimli degil.",
+      500
+    );
   }
 
   let response: Response;

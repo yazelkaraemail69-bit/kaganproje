@@ -1,5 +1,8 @@
 @echo off
 chcp 65001 >nul
+cd /d "%~dp0"
+echo API anahtari senkronize ediliyor...
+node "%~dp0..\..\scripts\sync-openrouter-env.mjs"
 cd /d "%~dp0backend"
 echo ========================================
 echo  El Yazisi Okuyucu ve Cevirici - API

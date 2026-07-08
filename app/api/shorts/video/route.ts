@@ -1,5 +1,6 @@
 import { after, NextResponse } from "next/server";
 import type { ShortsScript } from "@/lib/types";
+import { isOpenRouterConfigured } from "@/lib/env/openrouter";
 import { VideoGeneratorError } from "@/lib/video/errors";
 import { createVideoJob } from "@/lib/video/job-store";
 import { runShortsVideoPipeline } from "@/lib/video/pipeline";
@@ -36,14 +37,14 @@ export async function POST(request: Request) {
   }
 
   const missingEnvVars = [
-    !process.env.OPENROUTER_API_KEY && "OPENROUTER_API_KEY",
+    !isOpenRouterConfigured() && "OPENROUTER_API_KEY",
     !process.env.ELEVENLABS_API_KEY && "ELEVENLABS_API_KEY",
   ].filter((value): value is string => Boolean(value));
 
   if (missingEnvVars.length > 0) {
     return NextResponse.json(
       {
-        error: `Videoya dönüştürme için şu ortam değişkenleri eksik: ${missingEnvVars.join(", ")}. .env.local dosyanıza ekleyin.`,
+        error: `Videoya donusturme icin eksik: ${missingEnvVars.join(", ")}. kaganproje/.env.local dosyasina ekleyin ve sunucuyu yeniden baslatin.`,
       },
       { status: 500 }
     );

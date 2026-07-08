@@ -41,8 +41,8 @@ export function friendlyOpenRouterError(
   if (isOpenRouterAuthError(message)) {
     return [
       "OpenRouter API anahtari gecersiz veya eksik.",
-      "backend/.env dosyasindaki OPENROUTER_API_KEY degerini https://openrouter.ai/keys adresinden aldiginiz gercek anahtarla degistirin.",
-      "Degisiklikten sonra sunucuyu yeniden baslatin (npm run dev).",
+      "kaganproje/.env.local dosyasindaki OPENROUTER_API_KEY degerini https://openrouter.ai/keys adresinden aldiginiz gercek anahtarla degistirin.",
+      "Degisiklikten sonra her iki sunucuyu da yeniden baslatin (BASLAT.bat ve BASLAT-ELYAZISI.bat).",
     ].join(" ");
   }
 

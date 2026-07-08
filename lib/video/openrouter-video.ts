@@ -1,4 +1,5 @@
 import { VideoGeneratorError } from "@/lib/video/errors";
+import { requireOpenRouterApiKey } from "@/lib/env/openrouter";
 
 /**
  * OpenRouter's unified video generation API (`/api/v1/videos`). Reuses the
@@ -146,9 +147,14 @@ export async function generateVideoClip(
   promptText: string,
   targetDurationSeconds: number
 ): Promise<Buffer> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    throw new VideoGeneratorError("OPENROUTER_API_KEY tanımlı değil.", 500);
+  let apiKey: string;
+  try {
+    apiKey = requireOpenRouterApiKey("Shorts video klipleri");
+  } catch (error) {
+    throw new VideoGeneratorError(
+      error instanceof Error ? error.message : "OPENROUTER_API_KEY tanimli degil.",
+      500
+    );
   }
 
   const job = await submitVideoJob(apiKey, promptImageDataUri, promptText, targetDurationSeconds);

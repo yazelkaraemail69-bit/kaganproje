@@ -30,9 +30,12 @@ if not exist node_modules (
 if not exist .env.local (
   if exist .env.example (
     copy /Y .env.example .env.local >nul
-    echo  .env.local olusturuldu. Shorts icin API anahtarlarini duzenleyin.
+    echo  .env.local olusturuldu. OPENROUTER_API_KEY degerini duzenleyin.
   )
 )
+
+echo  API anahtari senkronize ediliyor...
+node scripts/sync-openrouter-env.mjs
 
 echo  Sunucu baslatiliyor: http://localhost:3000
 echo  Kapatmak icin Ctrl+C veya pencereyi kapatin.
