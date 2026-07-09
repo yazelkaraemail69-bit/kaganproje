@@ -8,14 +8,34 @@ interface FeatureCardProps {
   title: string;
   description: string;
   accentClassName: string;
+  badge?: string;
+  badgeTone?: "amber" | "slate";
 }
 
-export function FeatureCard({ href, icon: Icon, title, description, accentClassName }: FeatureCardProps) {
+export function FeatureCard({
+  href,
+  icon: Icon,
+  title,
+  description,
+  accentClassName,
+  badge,
+  badgeTone = "amber",
+}: FeatureCardProps) {
   return (
     <Link
       href={href}
       className="card-shadow group relative flex flex-col gap-5 overflow-hidden rounded-3xl border border-slate-100 bg-white p-6 transition-all hover:-translate-y-1 hover:shadow-xl sm:p-8"
     >
+      {badge ? (
+        <span
+          className={cn(
+            "absolute right-4 top-4 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide",
+            badgeTone === "amber" ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"
+          )}
+        >
+          {badge}
+        </span>
+      ) : null}
       <div
         className={cn(
           "flex h-14 w-14 items-center justify-center rounded-2xl text-white transition-transform group-hover:scale-105",

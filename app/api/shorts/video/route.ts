@@ -1,5 +1,6 @@
 import { after, NextResponse } from "next/server";
 import type { ShortsScript } from "@/lib/types";
+import { SHORTS_VIDEO_ENABLED, SHORTS_VIDEO_STATUS_MESSAGE } from "@/lib/billing/plans";
 import { isOpenRouterConfigured } from "@/lib/env/openrouter";
 import { VideoGeneratorError } from "@/lib/video/errors";
 import { createVideoJob } from "@/lib/video/job-store";
@@ -25,6 +26,13 @@ function isPlausibleShortsScript(value: unknown): value is ShortsScript {
 }
 
 export async function POST(request: Request) {
+  if (!SHORTS_VIDEO_ENABLED) {
+    return NextResponse.json(
+      { error: SHORTS_VIDEO_STATUS_MESSAGE, code: "SHORTS_VIDEO_DISABLED" },
+      { status: 503 }
+    );
+  }
+
   let body: { script?: unknown; language?: unknown };
   try {
     body = await request.json();

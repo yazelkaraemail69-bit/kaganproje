@@ -22,7 +22,9 @@ ILK KURULUM
 
 OZELLIKLER
 ----------
-- El yazisi -> metin (en fazla 10 foto)
-- PDF ceviri akisi
+- El yazisi -> metin (en fazla 25 foto)
+- 20 dil: TR, EN, komsu ulkeler (AR, FA, RU, AZ, EL, BG, KA, HY, UK, RO, KU),
+  DE/FR/ES/IT, CJK (ZH/JA/KO)
+- PDF ceviri akisi (en fazla 100 sayfa)
 - 5 ucretli AI model
 - TXT / PDF / DOCX disa aktarma

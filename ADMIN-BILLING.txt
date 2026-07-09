@@ -1,0 +1,64 @@
+KAGANPROJE — MANUEL ÖDEME + GMAIL OTOMASYONU
+============================================
+
+.env.local (yerelde tutun — GitHub'a gitmez)
+--------------------------------------------
+BILLING_ADMIN_SECRET=<sizin-gizli-anahtar>
+BILLING_CONTACT_WHATSAPP=<whatsapp-numaraniz>
+
+
+Gmail ile otomatik mail (zorunlu — müşteriye link gitsin)
+--------------------------------------------------------
+1) Google Hesap > Güvenlik > 2 Adımlı Doğrulama AÇIK olsun
+2) "Uygulama şifreleri" oluşturun (Mail / Diğer)
+3) .env.local'e ekleyin:
+
+SMTP_USER=sizin@gmail.com
+SMTP_PASS=xxxx xxxx xxxx xxxx
+SMTP_FROM="KaganProje <sizin@gmail.com>"
+BILLING_OWNER_EMAIL=sizin@gmail.com
+
+
+İyzico Link
+-----------
+İyzico panelinden Link oluşturup URL'yi ya:
+
+A) .env.local'e paket bazlı yazın:
+   IYZICO_LINK_BUSINESS_MONTHLY=https://...
+   IYZICO_LINK_DEFAULT=https://...   (tek link geçici)
+
+B) Veya her talepte admin API ile gönderin (aşağıda)
+
+
+Akış
+----
+1) Müşteri /fiyatlandirma → ödeme talebi
+2) Env'de link + SMTP varsa → Gmail'ine otomatik mail
+3) Yoksa siz: send-link API ile link + mail
+4) Ödeme gelince: activate API
+
+
+Linki müşteri Gmail'ine gönder
+------------------------------
+curl -s -X POST http://localhost:3000/api/billing/send-link ^
+  -H "Content-Type: application/json" ^
+  -H "x-admin-secret: <BILLING_ADMIN_SECRET>" ^
+  -d "{\"requestId\":\"pay_xxxxx\",\"iyzicoLink\":\"https://iyzico-link-url\"}"
+
+
+Ödemeyi onayla
+--------------
+curl -s -X POST http://localhost:3000/api/billing/activate ^
+  -H "Content-Type: application/json" ^
+  -H "x-admin-secret: <BILLING_ADMIN_SECRET>" ^
+  -d "{\"requestId\":\"pay_xxxxx\",\"action\":\"activate\"}"
+
+
+Bekleyen talepler
+-----------------
+curl -s http://localhost:3000/api/billing/activate ^
+  -H "x-admin-secret: <BILLING_ADMIN_SECRET>"
+
+
+Not: İyzico linkini chat'e yapıştırdığınızda .env.local'e IYZICO_LINK_* olarak yazarız;
+SMTP hazırsa yeni taleplerde mail otomatik gider.

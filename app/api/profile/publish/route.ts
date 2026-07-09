@@ -186,7 +186,7 @@ export async function POST(request: Request) {
       if (account.profileSlugs.length >= limits.maxProfiles) {
         return NextResponse.json(
           {
-            error: `Ücretsiz planda en fazla ${limits.maxProfiles} profil yayınlayabilirsiniz. Pro'ya yükseltin.`,
+            error: `Bu planda en fazla ${limits.maxProfiles} profil yayınlayabilirsiniz. /fiyatlandirma üzerinden yükseltin.`,
             code: "PLAN_LIMIT",
           },
           { status: 402 }

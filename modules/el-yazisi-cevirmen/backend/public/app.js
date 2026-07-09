@@ -1,4 +1,5 @@
-const MAX_IMAGES = 10;
+const MAX_IMAGES = window.APP_CONFIG?.maxImages || 25;
+const MAX_PDF_PAGES = window.APP_CONFIG?.maxPdfPages || 100;
 
 const state = {
   workflow: null,
@@ -265,6 +266,29 @@ function getActiveEditedText() {
   return state.editedText;
 }
 
+function confidenceBadgeHtml(img) {
+  if (img.averageConfidence == null) return "";
+  const pct = Math.round(img.averageConfidence * 100);
+  const low = img.averageConfidence < 0.55;
+  return `<span class="confidence-badge ${low ? "low" : "ok"}" title="Ortalama guven skoru">Guven %${pct}</span>`;
+}
+
+function highlightUncertainText(text) {
+  return escapeHtml(text).replace(/\[(\?)\]/g, '<span class="uncertain-token">[?]</span>');
+}
+
+function confidenceLinesHtml(img) {
+  const lines = img.document?.lines;
+  if (!Array.isArray(lines) || lines.length === 0) return "";
+  const uncertain = lines.filter((l) => l.uncertain || (typeof l.confidence === "number" && l.confidence < 0.55));
+  if (uncertain.length === 0) return "";
+  const preview = uncertain
+    .slice(0, 6)
+    .map((l) => `<li><span class="uncertain-token">${escapeHtml(l.text || "[?]")}</span> <small>%${Math.round((l.confidence ?? 0) * 100)}</small></li>`)
+    .join("");
+  return `<div class="confidence-lines"><p class="hint" style="margin:6px 0 2px">Dusuk guvenli satirlar (${uncertain.length}):</p><ul>${preview}</ul></div>`;
+}
+
 function photoPanelHtml(img, index, mode) {
   const statusClass = img.status === "scanning" ? "scanning" : img.status === "done" ? "done" : img.status === "error" ? "error" : "";
   const panelClass = img.status === "scanning" ? "is-scanning" : img.status === "error" ? "is-error" : img.status === "done" ? "is-done" : "";
@@ -280,12 +304,14 @@ function photoPanelHtml(img, index, mode) {
           <div class="photo-panel-head">
             <p class="photo-panel-title">Fotograf ${index + 1}</p>
             <span class="photo-panel-status ${statusClass}">${statusLabel(img.status)}</span>
+            ${confidenceBadgeHtml(img)}
           </div>
           <p class="hint" style="margin:0">${escapeHtml(img.name)}</p>
           ${
             img.text?.trim()
               ? `<p class="hint" style="margin:4px 0 0">Taranan metin:</p>
-          <p class="translate-panel-result upload-text-preview">${escapeHtml(img.text.trim())}</p>`
+          <p class="translate-panel-result upload-text-preview">${highlightUncertainText(img.text.trim())}</p>
+          ${confidenceLinesHtml(img)}`
               : ""
           }
           <div class="photo-panel-actions">
@@ -308,8 +334,10 @@ function photoPanelHtml(img, index, mode) {
           <div class="photo-panel-head">
             <p class="photo-panel-title">Sayfa ${index + 1}</p>
             <span class="photo-panel-status ${statusClass}">${statusLabel(img.status)}</span>
+            ${confidenceBadgeHtml(img)}
           </div>
           <textarea class="photo-panel-text" data-id="${img.id}" rows="6" placeholder="Bu fotografin metni...">${escapeHtml(img.text ?? "")}</textarea>
+          ${confidenceLinesHtml(img)}
           <div class="photo-panel-actions">
             <button type="button" class="btn secondary" data-action="rescan-one" data-id="${img.id}">Yeniden tara</button>
           </div>
@@ -497,13 +525,22 @@ async function scanSingleImage(id, options = {}) {
       mimeType: img.mimeType,
       sourceLangHint: langHint || undefined,
       model,
+      preprocess: true,
+      enhanceContrast: true,
     });
     img.text = result.text;
+    img.document = result.document ?? null;
+    img.averageConfidence = result.document?.averageConfidence ?? null;
+    img.fallbackUsed = Boolean(result.fallbackUsed);
+    img.preprocessApplied = Boolean(result.preprocessApplied);
     img.status = "done";
     syncCombinedText();
     renderUploadPanels();
     renderEditPanels();
-    setStatus("step1-status", `Sayfa ${index + 1} tarandi.`);
+    const conf =
+      img.averageConfidence != null ? ` · guven %${Math.round(img.averageConfidence * 100)}` : "";
+    const fb = img.fallbackUsed ? " · yedek gecis" : "";
+    setStatus("step1-status", `Sayfa ${index + 1} tarandi${conf}${fb}.`);
     if (goToEdit) {
       updateStep2Layout();
       showStep(2);
@@ -630,9 +667,10 @@ async function extractPdfText(file) {
 
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const pageLimit = Math.min(pdf.numPages, MAX_PDF_PAGES);
   const parts = [];
 
-  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+  for (let pageNum = 1; pageNum <= pageLimit; pageNum++) {
     const page = await pdf.getPage(pageNum);
     const content = await page.getTextContent();
     const pageText = content.items.map((item) => item.str).join(" ").trim();
@@ -646,7 +684,12 @@ async function extractPdfText(file) {
     );
   }
 
-  return { text, pageCount: pdf.numPages };
+  return {
+    text,
+    pageCount: pageLimit,
+    totalPages: pdf.numPages,
+    truncated: pdf.numPages > MAX_PDF_PAGES,
+  };
 }
 
 // --- Akis secimi ---
@@ -728,9 +771,17 @@ extractPdfBtn.addEventListener("click", async () => {
     state.editedText = result.text;
     state.translatedText = "";
     state.skippedTranslation = false;
-    document.getElementById("pdf-page-count").textContent = `${result.pageCount} sayfa`;
+    const pageLabel = result.truncated
+      ? `${result.pageCount} / ${result.totalPages} sayfa (limit: ${MAX_PDF_PAGES})`
+      : `${result.pageCount} sayfa`;
+    document.getElementById("pdf-page-count").textContent = pageLabel;
     document.getElementById("edited-text-pdf").value = result.text;
-    setStatus("step1-status", `${result.pageCount} sayfadan metin cikarildi.`);
+    setStatus(
+      "step1-status",
+      result.truncated
+        ? `Ilk ${result.pageCount} sayfa islendi (PDF ${result.totalPages} sayfa).`
+        : `${result.pageCount} sayfadan metin cikarildi.`
+    );
     showStep(2);
   } catch (error) {
     setStatus("step1-status", error.message, true);
@@ -779,8 +830,10 @@ translateBtn.addEventListener("click", async () => {
           sourceLang,
           targetLang,
           model,
+          document: img.document || undefined,
         });
         img.translatedText = result.translatedText;
+        img.translateDocument = result.document ?? null;
         const resultEl = document.querySelector(`[data-translate-result="${img.id}"]`);
         if (resultEl) {
           resultEl.textContent = result.translatedText;
@@ -878,22 +931,67 @@ document.getElementById("export-txt-btn").addEventListener("click", () => {
 document.getElementById("export-pdf-btn").addEventListener("click", () => {
   const meta = getExportMeta();
   const { text, title } = getExportContent();
-  const printArea = document.getElementById("print-area");
 
-  let html = `<h1>${escapeHtml(meta.exportTitle)}</h1>`;
-  html += `<h2>${escapeHtml(title)}</h2>`;
-  html += `<p>${escapeHtml(text).replace(/\n/g, "<br>")}</p>`;
+  if (!window.jspdf?.jsPDF) {
+    setStatus("step4-status", "PDF kutuphanesi yuklenemedi. Sayfayi yenileyip tekrar deneyin.", true);
+    return;
+  }
 
-  printArea.innerHTML = html;
-  printArea.hidden = false;
-  window.print();
-  printArea.hidden = true;
+  const doc = new window.jspdf.jsPDF({ unit: "pt", format: "a4" });
+  const margin = 48;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const maxWidth = pageWidth - margin * 2;
+  let y = margin;
+
+  function ensureSpace(lineHeight) {
+    if (y + lineHeight > pageHeight - margin) {
+      doc.addPage();
+      y = margin;
+    }
+  }
+
+  function addWrapped(content, fontSize, fontStyle) {
+    doc.setFont("helvetica", fontStyle);
+    doc.setFontSize(fontSize);
+    const lines = doc.splitTextToSize(content || "", maxWidth);
+    const lineHeight = fontSize * 1.35;
+    for (const line of lines) {
+      ensureSpace(lineHeight);
+      doc.text(line, margin, y);
+      y += lineHeight;
+    }
+  }
+
+  addWrapped(meta.exportTitle, 18, "bold");
+  y += 10;
+  addWrapped(title, 13, "bold");
+  y += 14;
+  addWrapped(text || " ", 11, "normal");
+
+  doc.save(`${meta.exportFilename}.pdf`);
+  setStatus("step4-status", "PDF indirildi.");
 });
 
 document.getElementById("export-docx-btn").addEventListener("click", async () => {
   const meta = getExportMeta();
   setStatus("step4-status", "DOCX olusturuluyor...");
   try {
+    const layoutLines =
+      state.workflow === "handwriting" && state.images.length > 0
+        ? state.images.flatMap((img) => {
+            const srcLines = img.document?.lines;
+            if (Array.isArray(srcLines) && srcLines.length > 0) {
+              const translatedLines = img.translateDocument?.lines;
+              return srcLines.map((line, idx) => ({
+                text: line.text ?? "",
+                translatedText: translatedLines?.[idx]?.translatedText,
+              }));
+            }
+            return [{ text: img.text ?? "", translatedText: img.translatedText }];
+          })
+        : undefined;
+
     const response = await fetch("/api/export/docx", {
       method: "POST",
       headers: {
@@ -904,6 +1002,7 @@ document.getElementById("export-docx-btn").addEventListener("click", async () =>
         originalText: hasActiveTranslation() ? "" : state.editedText,
         translatedText: hasActiveTranslation() ? state.translatedText : "",
         title: meta.exportTitle,
+        lines: layoutLines,
       }),
     });
     const data = await response.json();

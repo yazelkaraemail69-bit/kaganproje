@@ -4,6 +4,11 @@ import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import path from "path";
 import { PAID_MODELS, DEFAULT_PAID_MODEL } from "./config/paidModels";
+import {
+  MAX_HANDWRITING_IMAGES,
+  MAX_PDF_PAGES,
+  SUPPORTED_LANGUAGES,
+} from "./config/languages";
 import { corsOrigins, env, isOpenRouterConfigured, logStartupWarnings } from "./config/env";
 import { requireAppSecret } from "./middleware/auth";
 import { exportRouter } from "./routes/export";
@@ -16,13 +21,12 @@ const publicDir = path.join(__dirname, "../public");
 app.use(
   helmet({
     contentSecurityPolicy: false,
-    // KaganProje (localhost:3000) icinden iframe ile gomulebilmesi icin
     frameguard: false,
   })
 );
 app.use(cors({ origin: corsOrigins }));
-// Base64 goruntuler icin JSON govde limiti yukseltildi.
-app.use(express.json({ limit: "15mb" }));
+// Coklu fotograf (base64) icin JSON govde limiti.
+app.use(express.json({ limit: "40mb" }));
 
 // Health check - auth gerektirmez, deploy/monitoring ve kurulum kontrolu icin kullanilir.
 app.get("/health", (_req, res) => {
@@ -40,13 +44,21 @@ app.get("/config.js", (_req, res) => {
       sharedSecret: env.APP_SHARED_SECRET,
       models: PAID_MODELS,
       defaultModel: DEFAULT_PAID_MODEL,
+      maxImages: MAX_HANDWRITING_IMAGES,
+      maxPdfPages: MAX_PDF_PAGES,
+      languages: SUPPORTED_LANGUAGES.map((l) => ({
+        code: l.code,
+        label: l.label,
+        ocrHint: Boolean(l.ocrHint),
+        rtl: Boolean(l.rtl),
+      })),
     })};`
   );
 });
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 100,
+  limit: 250,
   standardHeaders: true,
   legacyHeaders: false,
 });

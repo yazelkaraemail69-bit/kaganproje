@@ -12,6 +12,7 @@ const registerSchema = z.object({
   email: z.string().email(),
   name: z.string().min(1).max(80),
   password: z.string().min(6).max(100),
+  inviteCode: z.string().max(32).optional(),
 });
 
 export async function POST(request: Request) {
@@ -28,7 +29,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const account = await createAccount(parsed.data);
+    const account = await createAccount({
+      email: parsed.data.email,
+      name: parsed.data.name,
+      password: parsed.data.password,
+      inviteCode: parsed.data.inviteCode,
+    });
     const token = createSessionToken(account.id, account.email);
     const response = NextResponse.json({ account: toPublicAccount(account) });
     response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());

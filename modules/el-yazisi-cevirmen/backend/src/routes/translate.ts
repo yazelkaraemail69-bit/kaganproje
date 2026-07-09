@@ -1,44 +1,45 @@
 import { Router } from "express";
 import { z } from "zod";
-import { getModelLabel, getPaidModelChain, isAllowedPaidModel, resolvePaidModel } from "../config/paidModels";
-import { callOpenRouterChatChain } from "../services/openrouter";
+import { isAllowedPaidModel } from "../config/paidModels";
+import { runTranslatePipeline } from "../pipeline/runTranslate";
 import { friendlyOpenRouterError } from "../utils/openRouterErrors";
+import type { OcrDocument } from "../types/ocrDocument";
 
 export const translateRouter = Router();
+
+const ocrLineSchema = z.object({
+  id: z.string(),
+  text: z.string(),
+  confidence: z.number(),
+  uncertain: z.boolean(),
+  isBlank: z.boolean().optional(),
+});
+
+const ocrDocumentSchema = z
+  .object({
+    languageHint: z.string().optional(),
+    averageConfidence: z.number(),
+    lines: z.array(ocrLineSchema),
+    paragraphs: z
+      .array(
+        z.object({
+          id: z.string(),
+          lineIds: z.array(z.string()),
+          text: z.string(),
+          confidence: z.number(),
+        })
+      )
+      .optional(),
+  })
+  .optional();
 
 const translateRequestSchema = z.object({
   text: z.string().min(1, "text zorunludur"),
   sourceLang: z.string().min(1, "sourceLang zorunludur"),
   targetLang: z.string().min(1, "targetLang zorunludur"),
   model: z.string().optional(),
+  document: ocrDocumentSchema,
 });
-
-function buildTranslatePrompt(sourceLang: string, targetLang: string) {
-  const langNames: Record<string, string> = {
-    tr: "Turkce",
-    en: "Ingilizce",
-    de: "Almanca",
-    fr: "Fransizca",
-    es: "Ispanyolca",
-    ar: "Arapca",
-  };
-
-  const targetName = langNames[targetLang] ?? targetLang;
-  const sourceDescription =
-    sourceLang === "auto"
-      ? "otomatik tespit ettigin kaynak dilden"
-      : `"${langNames[sourceLang] ?? sourceLang}" dilinden`;
-
-  return `Sen profesyonel bir cevirmensin. Verilen metni ${sourceDescription} "${targetName}" diline cevir.
-
-Kurallar:
-- Ciktiyi YALNIZCA ${targetName} dilinde yaz; kaynak dilde (ornegin Turkce) hicbir cumle, paragraf veya aciklama ekleme.
-- Orijinal metni tekrar etme, yan yana iki dil gosterme, "Ceviri:" gibi etiketler kullanma.
-- Anlami koruyarak dogal ve akici bir ceviri yap.
-- Orijinal paragraf ve satir yapisini mumkun oldugunca koru.
-- Metindeki [?] isaretli belirsiz kelimeleri baglamdan en olasi anlamla cevir; cevrilen kelimeyi de [?] ile isaretli birak.
-- SADECE cevrilen metni dondur.`;
-}
 
 translateRouter.post("/", async (req, res) => {
   const parsed = translateRequestSchema.safeParse(req.body);
@@ -47,32 +48,33 @@ translateRouter.post("/", async (req, res) => {
     return;
   }
 
-  const { text, sourceLang, targetLang, model: requestedModel } = parsed.data;
+  const { text, sourceLang, targetLang, model: requestedModel, document } = parsed.data;
 
   if (requestedModel && !isAllowedPaidModel(requestedModel)) {
     res.status(400).json({ error: "Gecersiz model secimi." });
     return;
   }
 
-  const selectedModel = resolvePaidModel(requestedModel);
-  const modelChain = getPaidModelChain(selectedModel);
-
   try {
-    const result = await callOpenRouterChatChain({
-      modelChain,
-      temperature: 0.3,
-      messages: [
-        { role: "system", content: buildTranslatePrompt(sourceLang, targetLang) },
-        { role: "user", content: text },
-      ],
-      context: "translate",
+    const result = await runTranslatePipeline({
+      text,
+      sourceLang,
+      targetLang,
+      model: requestedModel,
+      document: document
+        ? ({
+            ...document,
+            paragraphs: document.paragraphs ?? [],
+          } as OcrDocument)
+        : undefined,
     });
 
     res.json({
-      translatedText: result.text,
+      translatedText: result.translatedText,
+      document: result.document,
       modelUsed: result.modelUsed,
-      modelLabel: getModelLabel(result.modelUsed),
-      selectedModel,
+      modelLabel: result.modelLabel,
+      selectedModel: result.selectedModel,
     });
   } catch (error) {
     console.error("Ceviri hatasi:", error);

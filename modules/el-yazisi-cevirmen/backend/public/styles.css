@@ -540,6 +540,43 @@ label {
   color: #b91c1c;
 }
 
+.confidence-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.confidence-badge.ok {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.confidence-badge.low {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.confidence-lines ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.confidence-lines li {
+  margin: 2px 0;
+}
+
+.uncertain-token {
+  background: #fff7ed;
+  color: #9a3412;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
 .photo-panel-text {
   min-height: 100px;
   font-size: 0.9rem;

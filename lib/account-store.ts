@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import {
   createAccountId,
+  createInviteCode,
   hashPassword,
   normalizeEmail,
   verifyPassword,
@@ -20,6 +21,16 @@ function filePath(id: string): string {
   return path.join(DATA_DIR, `${safe}.json`);
 }
 
+/** Eski kayıtlara credits / inviteCode ekler */
+function normalizeAccount(raw: AccountRecord): AccountRecord {
+  return {
+    ...raw,
+    credits: typeof raw.credits === "number" ? raw.credits : 0,
+    inviteCode: raw.inviteCode || createInviteCode(raw.id || raw.email),
+    subscriptionStatus: raw.subscriptionStatus ?? "none",
+  };
+}
+
 export async function saveAccount(account: AccountRecord): Promise<void> {
   await ensureDir();
   await fs.writeFile(filePath(account.id), JSON.stringify(account, null, 2), "utf-8");
@@ -28,7 +39,7 @@ export async function saveAccount(account: AccountRecord): Promise<void> {
 export async function getAccountById(id: string): Promise<AccountRecord | null> {
   try {
     const raw = await fs.readFile(filePath(id), "utf-8");
-    return JSON.parse(raw) as AccountRecord;
+    return normalizeAccount(JSON.parse(raw) as AccountRecord);
   } catch {
     return null;
   }
@@ -42,7 +53,7 @@ export async function listAccounts(): Promise<AccountRecord[]> {
     if (!file.endsWith(".json")) continue;
     try {
       const raw = await fs.readFile(path.join(DATA_DIR, file), "utf-8");
-      accounts.push(JSON.parse(raw) as AccountRecord);
+      accounts.push(normalizeAccount(JSON.parse(raw) as AccountRecord));
     } catch {
       /* skip corrupt */
     }
@@ -56,10 +67,18 @@ export async function getAccountByEmail(email: string): Promise<AccountRecord | 
   return accounts.find((a) => a.email === normalized) ?? null;
 }
 
+export async function getAccountByInviteCode(code: string): Promise<AccountRecord | null> {
+  const normalized = code.trim().toUpperCase();
+  if (!normalized) return null;
+  const accounts = await listAccounts();
+  return accounts.find((a) => a.inviteCode === normalized) ?? null;
+}
+
 export async function createAccount(input: {
   email: string;
   name: string;
   password: string;
+  inviteCode?: string;
 }): Promise<AccountRecord> {
   const email = normalizeEmail(input.email);
   const existing = await getAccountByEmail(email);
@@ -68,12 +87,16 @@ export async function createAccount(input: {
   }
 
   const now = new Date().toISOString();
+  const id = createAccountId(email);
   const account: AccountRecord = {
-    id: createAccountId(email),
+    id,
     email,
     name: input.name.trim() || email.split("@")[0],
     passwordHash: hashPassword(input.password),
     plan: "free",
+    credits: 0,
+    inviteCode: createInviteCode(id),
+    referredByCode: input.inviteCode?.trim().toUpperCase() || undefined,
     subscriptionStatus: "none",
     teamIds: [],
     profileSlugs: [],
@@ -110,6 +133,12 @@ export async function updateAccount(
   return next;
 }
 
+export async function addCredits(id: string, amount: number): Promise<AccountRecord | null> {
+  const account = await getAccountById(id);
+  if (!account) return null;
+  return updateAccount(id, { credits: Math.max(0, (account.credits ?? 0) + amount) });
+}
+
 export async function attachProfileToAccount(accountId: string, slug: string): Promise<void> {
   const account = await getAccountById(accountId);
   if (!account) return;
@@ -122,4 +151,16 @@ export async function attachProfileToAccount(accountId: string, slug: string): P
 export async function getPublicAccount(id: string): Promise<PublicAccount | null> {
   const account = await getAccountById(id);
   return account ? toPublicAccount(account) : null;
+}
+
+/** Aktif ücretli abone sayısı (şirket eşiği için) */
+export async function countActiveSubscribers(): Promise<number> {
+  const accounts = await listAccounts();
+  const now = Date.now();
+  return accounts.filter((a) => {
+    if (a.plan === "free") return false;
+    if (a.subscriptionStatus !== "active") return false;
+    if (a.planExpiresAt && new Date(a.planExpiresAt).getTime() < now) return false;
+    return true;
+  }).length;
 }

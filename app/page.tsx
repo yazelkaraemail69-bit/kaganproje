@@ -1,13 +1,20 @@
-import { Clapperboard, CreditCard, PenLine, UserRound, UtensilsCrossed } from "lucide-react";
+import { Clapperboard, CreditCard, PenLine, Tag, UserRound, UtensilsCrossed } from "lucide-react";
 import Link from "next/link";
 import { FeatureCard } from "@/components/dashboard/FeatureCard";
+import { SiteFooter } from "@/components/layout/SiteFooter";
 
 export default function DashboardPage() {
   return (
     <main className="flex flex-1 flex-col">
       <section className="border-b border-slate-200 bg-white">
         <div className="container-app py-14 text-center sm:py-20">
-          <div className="mb-4 flex justify-end">
+          <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
+            <Link
+              href="/fiyatlandirma"
+              className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-3.5 py-1.5 text-xs font-bold text-brand-700 shadow-sm transition-colors hover:border-brand-300 hover:bg-brand-100"
+            >
+              <Tag className="h-3.5 w-3.5" /> Fiyatlar
+            </Link>
             <Link
               href="/hesap"
               className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700"
@@ -22,8 +29,8 @@ export default function DashboardPage() {
             İşletmeniz için saniyeler içinde profesyonel dijital içerik oluşturun
           </h1>
           <p className="mx-auto mt-4 max-w-xl leading-7 text-slate-500">
-            Aşağıdaki kartlardan birini seçin, birkaç adımda bilgilerinizi girin ve
-            anında paylaşılabilir, şık bir önizleme elde edin.
+            QR kartvizit, dijital menü ve el yazısı çeviri. Abonelik + AI kredisi ile büyüyün;
+            Shorts video geliştirme aşamasında.
           </p>
         </div>
       </section>
@@ -48,8 +55,9 @@ export default function DashboardPage() {
             href="/shorts"
             icon={Clapperboard}
             title="Shorts Senaryosu Oluştur"
-            description="Niş, kitle, ton ve süreyi seçin; yapay zeka hook, ipuçları, CTA, görsel promptlar ve seslendirme metniyle tam bir Shorts senaryosu üretsin."
+            description="Senaryo metni açık. Video üretimi (~3$/video) geliştirme aşamasında kapalıdır."
             accentClassName="bg-gradient-to-br from-slate-700 to-slate-900"
+            badge="Video kapalı"
           />
           <FeatureCard
             href="/elyazisi"
@@ -60,6 +68,8 @@ export default function DashboardPage() {
           />
         </div>
       </section>
+
+      <SiteFooter />
     </main>
   );
 }

@@ -74,17 +74,31 @@
 
             <div id="upload-handwriting">
             <h2>El yazisi fotografi yukleyin</h2>
-            <p class="hint">En fazla 10 fotograf. Her biri icin ayri panel acilir.</p>
+            <p class="hint">En fazla 25 fotograf. Her biri icin ayri panel acilir.</p>
 
             <label class="lang-hint-label">
               Yazinin dili
               <select id="source-lang-hint">
                 <option value="tr" selected>Turkce</option>
                 <option value="en">Ingilizce</option>
+                <option value="ar">Arapca</option>
+                <option value="fa">Farsca (Persce)</option>
+                <option value="ru">Rusca</option>
+                <option value="az">Azerbaycan Turkcesi</option>
+                <option value="el">Yunanca</option>
+                <option value="bg">Bulgarca</option>
+                <option value="ka">Gurcuce</option>
+                <option value="hy">Ermenice</option>
+                <option value="uk">Ukraynaca</option>
+                <option value="ro">Romence</option>
+                <option value="ku">Kurtce</option>
                 <option value="de">Almanca</option>
                 <option value="fr">Fransizca</option>
                 <option value="es">Ispanyolca</option>
-                <option value="ar">Arapca</option>
+                <option value="it">Italyanca</option>
+                <option value="zh">Cince</option>
+                <option value="ja">Japonca</option>
+                <option value="ko">Korece</option>
                 <option value="">Otomatik algila</option>
               </select>
             </label>
@@ -92,7 +106,7 @@
             <div class="upload-area">
               <input type="file" id="image-input" accept="image/*" multiple hidden />
               <div id="preview-box" class="preview-box empty">
-                <span id="preview-placeholder">Henuz fotograf secilmedi (en fazla 10)</span>
+                <span id="preview-placeholder">Henuz fotograf secilmedi (en fazla 25)</span>
                 <div id="preview-grid" class="preview-grid" hidden></div>
               </div>
               <p id="image-count" class="image-count" hidden></p>
@@ -107,8 +121,8 @@
           <div id="upload-pdf" hidden>
             <h2>PDF dosyasi yukleyin</h2>
             <p class="hint">
-              Metin iceren PDF dosyalari desteklenir. Taranmis (gorsel) PDF'ler icin
-              el yazisi akisini kullanin.
+              Metin iceren PDF dosyalari desteklenir (en fazla 100 sayfa). Taranmis
+              (gorsel) PDF'ler icin el yazisi akisini kullanin.
             </p>
 
             <div class="upload-area">
@@ -166,9 +180,24 @@
                 <option value="auto">Otomatik Algila</option>
                 <option value="tr">Turkce</option>
                 <option value="en">Ingilizce</option>
+                <option value="ar">Arapca</option>
+                <option value="fa">Farsca (Persce)</option>
+                <option value="ru">Rusca</option>
+                <option value="az">Azerbaycan Turkcesi</option>
+                <option value="el">Yunanca</option>
+                <option value="bg">Bulgarca</option>
+                <option value="ka">Gurcuce</option>
+                <option value="hy">Ermenice</option>
+                <option value="uk">Ukraynaca</option>
+                <option value="ro">Romence</option>
+                <option value="ku">Kurtce</option>
                 <option value="de">Almanca</option>
                 <option value="fr">Fransizca</option>
                 <option value="es">Ispanyolca</option>
+                <option value="it">Italyanca</option>
+                <option value="zh">Cince</option>
+                <option value="ja">Japonca</option>
+                <option value="ko">Korece</option>
               </select>
             </label>
             <label>
@@ -176,9 +205,24 @@
               <select id="target-lang">
                 <option value="en">Ingilizce</option>
                 <option value="tr">Turkce</option>
+                <option value="ar">Arapca</option>
+                <option value="fa">Farsca (Persce)</option>
+                <option value="ru">Rusca</option>
+                <option value="az">Azerbaycan Turkcesi</option>
+                <option value="el">Yunanca</option>
+                <option value="bg">Bulgarca</option>
+                <option value="ka">Gurcuce</option>
+                <option value="hy">Ermenice</option>
+                <option value="uk">Ukraynaca</option>
+                <option value="ro">Romence</option>
+                <option value="ku">Kurtce</option>
                 <option value="de">Almanca</option>
                 <option value="fr">Fransizca</option>
                 <option value="es">Ispanyolca</option>
+                <option value="it">Italyanca</option>
+                <option value="zh">Cince</option>
+                <option value="ja">Japonca</option>
+                <option value="ko">Korece</option>
               </select>
             </label>
           </div>
@@ -209,7 +253,7 @@
           </div>
           <div class="export-buttons">
             <button type="button" id="export-txt-btn" class="btn primary">TXT indir</button>
-            <button type="button" id="export-pdf-btn" class="btn primary">PDF yazdir / kaydet</button>
+            <button type="button" id="export-pdf-btn" class="btn primary">PDF indir</button>
             <button type="button" id="export-docx-btn" class="btn primary">DOCX indir</button>
           </div>
           <button type="button" id="restart-btn" class="btn secondary full">Yeni Dokuman</button>
@@ -218,9 +262,8 @@
       </main>
     </div>
 
-    <div id="print-area" class="print-only" hidden></div>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
     <script src="/config.js"></script>
     <script src="/app.js"></script>
   </body>

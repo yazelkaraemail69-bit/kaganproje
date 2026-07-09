@@ -17,7 +17,7 @@ export function ElyazisiEmbed() {
       <div className="container-app border-b border-slate-200 bg-slate-50 py-4">
         <p className="text-sm leading-6 text-slate-600">
           El yazısı fotoğraflarını metne çevirin, düzenleyin, çevirin ve TXT / PDF / DOCX olarak
-          kaydedin. En fazla 10 fotoğraf desteklenir.
+          kaydedin. En fazla 25 fotoğraf desteklenir.
         </p>
         <p className="mt-2 text-sm text-slate-500">
           Modül çalışmıyorsa önce{" "}

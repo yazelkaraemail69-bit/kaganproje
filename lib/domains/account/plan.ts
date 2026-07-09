@@ -1,8 +1,6 @@
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from "crypto";
+import { getPlan, type PlanId } from "@/lib/billing/plans";
 import type { AccountPlan } from "@/lib/domains/account/types";
-
-export const FREE_PROFILE_LIMIT = 1;
-export const PRO_PROFILE_LIMIT = 50;
 
 export interface PlanLimits {
   maxProfiles: number;
@@ -10,24 +8,32 @@ export interface PlanLimits {
   crmWebhook: boolean;
   teams: boolean;
   multiBranch: boolean;
+  monthlyCredits: number;
+  removeWatermark: boolean;
 }
 
 export function getPlanLimits(plan: AccountPlan): PlanLimits {
-  if (plan === "pro") {
+  const def = getPlan(plan as PlanId);
+  if (def) {
     return {
-      maxProfiles: PRO_PROFILE_LIMIT,
-      analyticsDays: 365,
-      crmWebhook: true,
-      teams: true,
-      multiBranch: true,
+      maxProfiles: def.maxProfiles,
+      analyticsDays: def.analyticsDays,
+      crmWebhook: def.crmWebhook,
+      teams: def.teams,
+      multiBranch: def.teams,
+      monthlyCredits: def.monthlyCredits,
+      removeWatermark: def.removeWatermark,
     };
   }
+  // free / taslak
   return {
-    maxProfiles: FREE_PROFILE_LIMIT,
+    maxProfiles: 1,
     analyticsDays: 7,
     crmWebhook: false,
     teams: false,
     multiBranch: false,
+    monthlyCredits: 0,
+    removeWatermark: false,
   };
 }
 
@@ -52,7 +58,10 @@ export function verifyPassword(password: string, stored: string): boolean {
 
 export function createAccountId(email: string): string {
   const stamp = Date.now().toString(36);
-  const digest = createHash("sha256").update(`${normalizeEmail(email)}:${stamp}`).digest("hex").slice(0, 10);
+  const digest = createHash("sha256")
+    .update(`${normalizeEmail(email)}:${stamp}`)
+    .digest("hex")
+    .slice(0, 10);
   return `acc_${digest}`;
 }
 
@@ -60,4 +69,13 @@ export function createTeamId(name: string): string {
   const stamp = Date.now().toString(36);
   const digest = createHash("sha256").update(`${name}:${stamp}`).digest("hex").slice(0, 8);
   return `team_${digest}`;
+}
+
+export function createInviteCode(seed: string): string {
+  const digest = createHash("sha256")
+    .update(`${seed}:${Date.now()}:${randomBytes(4).toString("hex")}`)
+    .digest("hex")
+    .slice(0, 8)
+    .toUpperCase();
+  return `KG${digest}`;
 }

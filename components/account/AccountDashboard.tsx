@@ -31,7 +31,14 @@ interface MeResponse {
   limits?: PlanLimits;
   teams?: TeamRecord[];
   profiles?: ProfileRow[];
-  stripeConfigured?: boolean;
+  billing?: {
+    mode: string;
+    inviteBonusCredits: number;
+    planDisplayName: string;
+    activeSubscribers: number;
+    companyThreshold: number;
+    shortsVideoEnabled: boolean;
+  };
 }
 
 export function AccountDashboard() {
@@ -41,6 +48,7 @@ export function AccountDashboard() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const [inviteCodeInput, setInviteCodeInput] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -67,6 +75,15 @@ export function AccountDashboard() {
     void refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const ref = new URLSearchParams(window.location.search).get("ref");
+    if (ref) {
+      setMode("register");
+      setInviteCodeInput(ref);
+    }
+  }, []);
+
   async function handleAuth(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
@@ -76,7 +93,12 @@ export function AccountDashboard() {
       const body =
         mode === "login"
           ? { email, password }
-          : { email, password, name: name || email.split("@")[0] };
+          : {
+              email,
+              password,
+              name: name || email.split("@")[0],
+              inviteCode: inviteCodeInput.trim() || undefined,
+            };
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -98,24 +120,18 @@ export function AccountDashboard() {
     setMe({ account: null });
   }
 
-  async function handleUpgrade() {
-    setBusy(true);
-    setMessage("");
+  function handleUpgrade() {
+    window.location.href = "/fiyatlandirma";
+  }
+
+  async function copyInviteLink() {
+    if (!me.account?.inviteCode) return;
+    const url = `${window.location.origin}/hesap?ref=${me.account.inviteCode}`;
     try {
-      const res = await fetch("/api/billing/checkout", { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Ödeme başlatılamadı.");
-        return;
-      }
-      if (data.url) {
-        window.location.href = data.url;
-        return;
-      }
-      setMessage(data.message || "Pro plan etkinleştirildi.");
-      await refresh();
-    } finally {
-      setBusy(false);
+      await navigator.clipboard.writeText(url);
+      setMessage("Davet linki kopyalandı. Arkadaşınız kayıt olurken kodu girebilir.");
+    } catch {
+      setMessage(`Davet kodunuz: ${me.account.inviteCode}`);
     }
   }
 
@@ -276,6 +292,14 @@ export function AccountDashboard() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="En az 6 karakter"
           />
+          {mode === "register" ? (
+            <Input
+              label="Davet kodu (opsiyonel)"
+              value={inviteCodeInput}
+              onChange={(e) => setInviteCodeInput(e.target.value)}
+              placeholder="KGxxxxxxxx"
+            />
+          ) : null}
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
           <Button type="submit" disabled={busy}>
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
@@ -288,7 +312,8 @@ export function AccountDashboard() {
 
   const account = me.account;
   const limits = me.limits!;
-  const isPro = account.plan === "pro";
+  const isPaid = account.plan !== "free";
+  const planName = me.billing?.planDisplayName ?? (isPaid ? account.plan : "Ücretsiz");
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
@@ -297,9 +322,14 @@ export function AccountDashboard() {
           <p className="text-xs font-bold uppercase tracking-wide text-brand-600">Hesabım</p>
           <h1 className="mt-1 text-2xl font-black text-slate-900">{account.name}</h1>
           <p className="text-sm text-slate-500">{account.email}</p>
-          <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
-            <Sparkles className="h-3.5 w-3.5" />
-            {isPro ? "Pro Plan" : "Ücretsiz Plan"} · {account.profileSlugs.length}/{limits.maxProfiles} profil
+          <p className="mt-2 inline-flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
+              <Sparkles className="h-3.5 w-3.5" />
+              {planName} · {account.profileSlugs.length}/{limits.maxProfiles} profil
+            </span>
+            <span className="inline-flex items-center rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700">
+              {account.credits ?? 0} AI kredi
+            </span>
           </p>
         </div>
         <Button variant="ghost" onClick={handleLogout}>
@@ -319,20 +349,43 @@ export function AccountDashboard() {
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-center gap-2">
           <CreditCard className="h-5 w-5 text-brand-600" />
-          <h2 className="text-lg font-bold text-slate-900">Plan & Faturalama</h2>
+          <h2 className="text-lg font-bold text-slate-900">Plan, kredi & ödeme</h2>
         </div>
         <p className="mt-2 text-sm text-slate-500">
-          Free: {limits.maxProfiles} profil, {limits.analyticsDays} gün analitik.
-          Pro: CRM webhook, takım/çok şube, daha fazla profil.
+          Ödemeler İyzico Link ile alınır (şirket yok, {me.billing?.companyThreshold ?? 15} aboneye
+          kadar). Kredi bitince ek paket veya üst plan seçin.
         </p>
-        {!isPro ? (
-          <Button className="mt-4" onClick={handleUpgrade} disabled={busy}>
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            Pro&apos;ya Yükselt
+        {account.planExpiresAt ? (
+          <p className="mt-2 text-xs text-slate-500">
+            Plan bitiş: {new Date(account.planExpiresAt).toLocaleDateString("tr-TR")}
+          </p>
+        ) : null}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button onClick={handleUpgrade}>
+            <Sparkles className="h-4 w-4" />
+            {isPaid ? "Planı değiştir / yenile" : "Paket seç"}
           </Button>
-        ) : (
-          <p className="mt-3 text-sm font-semibold text-emerald-700">Pro plan aktif.</p>
-        )}
+          <Link href="/fiyatlandirma/odeme?kind=credits&pack=credits_100">
+            <Button variant="secondary">Ek kredi al</Button>
+          </Link>
+        </div>
+        {account.subscriptionStatus === "pending_payment" ? (
+          <p className="mt-3 text-sm font-semibold text-amber-700">
+            Ödeme talebiniz bekleniyor — link gelince ödeyin, ardından plan açılır.
+          </p>
+        ) : null}
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-bold text-slate-900">Arkadaşını davet et</h2>
+        <p className="mt-2 text-sm text-slate-500">
+          Arkadaşınız ilk ödemeyi yapınca ikiniz de +{me.billing?.inviteBonusCredits ?? 50} kredi
+          kazanırsınız. Kodunuz:{" "}
+          <span className="font-mono font-bold text-slate-800">{account.inviteCode || "—"}</span>
+        </p>
+        <Button className="mt-4" variant="secondary" onClick={copyInviteLink}>
+          Davet linkini kopyala
+        </Button>
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -388,7 +441,7 @@ export function AccountDashboard() {
             </Button>
           </div>
         ) : (
-          <p className="mt-3 text-sm text-amber-700">Pro plana yükseltince CRM webhook açılır.</p>
+          <p className="mt-3 text-sm text-amber-700">Pro planda CRM webhook açılır.</p>
         )}
       </section>
 
