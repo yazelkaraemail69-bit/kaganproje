@@ -14,18 +14,30 @@ const translateRequestSchema = z.object({
 });
 
 function buildTranslatePrompt(sourceLang: string, targetLang: string) {
-  const sourceDescription =
-    sourceLang === "auto" ? "otomatik olarak tespit ettigin kaynak dilden" : `"${sourceLang}" dilinden`;
+  const langNames: Record<string, string> = {
+    tr: "Turkce",
+    en: "Ingilizce",
+    de: "Almanca",
+    fr: "Fransizca",
+    es: "Ispanyolca",
+    ar: "Arapca",
+  };
 
-  return `Sen profesyonel bir cevirmensin. Sana verilen metni ${sourceDescription}
-"${targetLang}" diline cevir.
+  const targetName = langNames[targetLang] ?? targetLang;
+  const sourceDescription =
+    sourceLang === "auto"
+      ? "otomatik tespit ettigin kaynak dilden"
+      : `"${langNames[sourceLang] ?? sourceLang}" dilinden`;
+
+  return `Sen profesyonel bir cevirmensin. Verilen metni ${sourceDescription} "${targetName}" diline cevir.
 
 Kurallar:
+- Ciktiyi YALNIZCA ${targetName} dilinde yaz; kaynak dilde (ornegin Turkce) hicbir cumle, paragraf veya aciklama ekleme.
+- Orijinal metni tekrar etme, yan yana iki dil gosterme, "Ceviri:" gibi etiketler kullanma.
 - Anlami koruyarak dogal ve akici bir ceviri yap.
 - Orijinal paragraf ve satir yapisini mumkun oldugunca koru.
-- Metindeki [?] isaretli belirsiz kelimeleri, baglamdan en olasi anlamla cevir ama
-  cevrilen kelimeyi de [?] ile isaretli birak.
-- SADECE cevrilen metni dondur; aciklama, not veya orijinal metni tekrar etme.`;
+- Metindeki [?] isaretli belirsiz kelimeleri baglamdan en olasi anlamla cevir; cevrilen kelimeyi de [?] ile isaretli birak.
+- SADECE cevrilen metni dondur.`;
 }
 
 translateRouter.post("/", async (req, res) => {

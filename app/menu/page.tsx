@@ -3,13 +3,13 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { MenuWizard } from "@/components/menu/MenuWizard";
 
 export const metadata: Metadata = {
-  title: "Dijital Menü Oluştur",
+  title: "Dijital Menü & Katalog Oluştur",
 };
 
 export default function MenuPage() {
   return (
     <main className="flex flex-1 flex-col">
-      <PageHeader title="Dijital Menü Oluştur" />
+      <PageHeader title="Dijital Menü & Katalog Oluştur" />
       <MenuWizard />
     </main>
   );

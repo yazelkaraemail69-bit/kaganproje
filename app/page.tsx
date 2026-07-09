@@ -1,4 +1,5 @@
-import { Clapperboard, CreditCard, PenLine, UtensilsCrossed } from "lucide-react";
+import { Clapperboard, CreditCard, PenLine, UserRound, UtensilsCrossed } from "lucide-react";
+import Link from "next/link";
 import { FeatureCard } from "@/components/dashboard/FeatureCard";
 
 export default function DashboardPage() {
@@ -6,6 +7,14 @@ export default function DashboardPage() {
     <main className="flex flex-1 flex-col">
       <section className="border-b border-slate-200 bg-white">
         <div className="container-app py-14 text-center sm:py-20">
+          <div className="mb-4 flex justify-end">
+            <Link
+              href="/hesap"
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 shadow-sm transition-colors hover:border-brand-300 hover:text-brand-700"
+            >
+              <UserRound className="h-3.5 w-3.5" /> Hesabım
+            </Link>
+          </div>
           <span className="inline-flex items-center rounded-full bg-brand-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-brand-700">
             Dijital Vitrin Stüdyosu
           </span>
@@ -25,14 +34,14 @@ export default function DashboardPage() {
             href="/kartvizit"
             icon={CreditCard}
             title="Dijital Kartvizit Oluştur"
-            description="İsim, ünvan, iletişim bilgileri ve sosyal medya linklerinizle paylaşıma hazır bir dijital kartvizit tasarlayın."
+            description="Executive, minimal ve bold düzenler; AI portre üretimi ile 2025 profesyonel kartvizit tasarımı."
             accentClassName="bg-gradient-to-br from-brand-500 to-brand-700"
           />
           <FeatureCard
             href="/menu"
             icon={UtensilsCrossed}
             title="Dijital Menü Oluştur"
-            description="Restoranınızın kategorilerini ve ürünlerini ekleyin, müşterilerinizle paylaşabileceğiniz zarif bir menü oluşturun."
+            description="Bistro, galeri ve minimal menü şablonları; AI logo ve yemek fotoğrafı ile QR menü oluşturun."
             accentClassName="bg-gradient-to-br from-accent-500 to-accent-600"
           />
           <FeatureCard

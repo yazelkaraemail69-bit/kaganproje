@@ -1,24 +1,20 @@
 import type { MenuData } from "@/lib/types";
-import { downscaleDataUrl } from "@/lib/image";
 import { AUTO_THEME_ID } from "@/lib/themes";
+import { DEFAULT_BUSINESS_TYPE } from "@/lib/business-config";
+import type { ShareableCatalog } from "@/lib/domains/profile/types";
+import { QR_SAFE_MAX_LENGTH } from "@/lib/qr/constants";
+import { DEFAULT_MENU_LOCALE } from "@/lib/menu-locales";
+
+/** @deprecated Use QR_SAFE_MAX_LENGTH from lib/qr/constants */
+export const QR_SAFE_MAX_LENGTH_LEGACY = QR_SAFE_MAX_LENGTH;
+export { QR_SAFE_MAX_LENGTH };
 
 /**
  * Compact, URL-safe representation of a menu used for the QR/share link.
- * Per-item photos are intentionally left out — a menu can have many of them
- * and embedding all of that image data would make the link/QR too large to
- * scan reliably. The logo is kept (heavily downscaled) so the personalized
- * color theme still shows up for anyone opening the shared link.
+ * Logos and item photos are omitted to keep the link short enough to scan.
+ * Auto-theme colors (3 hex values) are embedded instead of the logo image.
  */
-interface ShareableMenu {
-  restaurantName: string;
-  description: string;
-  logoUrl?: string;
-  themeId?: string;
-  categories: Array<{
-    name: string;
-    items: Array<{ name: string; price: string; description: string }>;
-  }>;
-}
+interface ShareableMenu extends ShareableCatalog {}
 
 function toBase64Url(input: string): string {
   const base64 = btoa(unescape(encodeURIComponent(input)));
@@ -42,15 +38,21 @@ export function decodeMenuShareData(encoded: string): MenuData {
   }
 
   return {
+    businessType: parsed.businessType ?? DEFAULT_BUSINESS_TYPE,
     restaurantName: parsed.restaurantName,
     description: parsed.description ?? "",
-    logoUrl: parsed.logoUrl ?? "",
+    logoUrl: "",
     themeId: parsed.themeId ?? AUTO_THEME_ID,
+    customThemeColors: parsed.colors,
+    layoutId: parsed.layoutId ?? "classic",
+    contactPhone: parsed.contactPhone ?? "",
+    enabledLocales: parsed.enabledLocales?.length ? parsed.enabledLocales : [DEFAULT_MENU_LOCALE],
+    translations: parsed.translations,
     categories: parsed.categories.map((category) => ({
-      id: crypto.randomUUID(),
+      id: category.id ?? crypto.randomUUID(),
       name: category.name ?? "",
       items: (category.items ?? []).map((item) => ({
-        id: crypto.randomUUID(),
+        id: item.id ?? crypto.randomUUID(),
         name: item.name ?? "",
         price: item.price ?? "",
         description: item.description ?? "",
@@ -60,35 +62,51 @@ export function decodeMenuShareData(encoded: string): MenuData {
   };
 }
 
-function toShareable(data: MenuData, logoUrl?: string): ShareableMenu {
+export function toShareableMenu(data: MenuData, colors?: string[]): ShareableCatalog {
+  return toShareable(data, colors);
+}
+
+function toShareable(data: MenuData, colors?: string[]): ShareableMenu {
+  const enabledLocales = data.enabledLocales?.length ? data.enabledLocales : undefined;
   return {
-    restaurantName: data.restaurantName,
-    description: data.description,
-    logoUrl,
+    businessType: data.businessType,
+    restaurantName: data.restaurantName.trim(),
+    description: data.description.trim().slice(0, 160),
     themeId: data.themeId,
+    layoutId: data.layoutId,
+    colors: colors && colors.length >= 2 ? colors.slice(0, 3) : undefined,
+    logoUrl: data.logoUrl?.startsWith("http") ? data.logoUrl : undefined,
+    contactPhone: data.contactPhone?.trim() || undefined,
+    enabledLocales,
+    translations: data.translations,
     categories: data.categories
       .map((category) => ({
-        name: category.name,
+        id: category.id,
+        name: category.name.trim(),
         items: category.items
           .filter((item) => item.name.trim())
-          .map((item) => ({ name: item.name, price: item.price, description: item.description })),
+          .map((item) => ({
+            id: item.id,
+            name: item.name.trim(),
+            price: item.price.trim(),
+            description: item.description.trim().slice(0, 100),
+            imageUrl: item.imageUrl?.startsWith("http") ? item.imageUrl : undefined,
+          })),
       }))
       .filter((category) => category.items.length > 0),
   };
 }
 
-/** Builds a self-contained link (data encoded in the URL) that renders a read-only menu preview. */
-export async function buildMenuShareUrl(data: MenuData): Promise<string> {
-  let compactLogo: string | undefined;
-  if (data.logoUrl) {
-    try {
-      compactLogo = await downscaleDataUrl(data.logoUrl, 96, 0.5);
-    } catch {
-      compactLogo = undefined;
-    }
-  }
+export function isQrSafeUrl(url: string): boolean {
+  return url.length <= QR_SAFE_MAX_LENGTH;
+}
 
-  const encoded = encodeMenuShareData(toShareable(data, compactLogo));
+/** Builds a self-contained link (data encoded in the URL) that renders a read-only menu preview. */
+export async function buildMenuShareUrl(
+  data: MenuData,
+  options?: { colors?: string[] }
+): Promise<string> {
+  const encoded = encodeMenuShareData(toShareable(data, options?.colors));
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   return `${origin}/menu/view?d=${encoded}`;
 }

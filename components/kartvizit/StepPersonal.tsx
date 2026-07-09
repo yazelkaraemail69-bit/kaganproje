@@ -14,9 +14,16 @@ export function StepPersonal({ data, onChange }: StepPersonalProps) {
     <div className="flex flex-col gap-5">
       <PhotoUpload
         label="Profil Fotoğrafı"
-        hint="Kare veya yuvarlak kırpılacak bir fotoğraf önerilir."
+        hint="Kare veya yuvarlak kırpılacak bir fotoğraf önerilir. AI ile profesyonel portre üretebilirsiniz."
         value={data.photoUrl}
         onChange={(photoUrl) => onChange({ photoUrl })}
+        aiType="card-photo"
+        aiContext={{
+          fullName: data.fullName,
+          title: data.title,
+          company: data.company,
+          themeHint: data.themeId,
+        }}
       />
       <Input
         label="Ad Soyad"

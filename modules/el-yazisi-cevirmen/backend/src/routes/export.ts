@@ -25,27 +25,35 @@ exportRouter.post("/docx", async (req, res) => {
   }
 
   const { originalText, translatedText, sourceLang, targetLang, title } = parsed.data;
+  const hasOriginal = originalText.trim().length > 0;
+  const hasTranslated = translatedText.trim().length > 0;
 
   try {
+    const children = [new Paragraph({ text: title, heading: HeadingLevel.TITLE })];
+
+    if (hasOriginal) {
+      children.push(
+        new Paragraph({
+          text: `Orijinal Metin${sourceLang ? ` (${sourceLang})` : ""}`,
+          heading: HeadingLevel.HEADING_1,
+        }),
+        ...textToParagraphs(originalText),
+        new Paragraph({ text: "" })
+      );
+    }
+
+    if (hasTranslated) {
+      children.push(
+        new Paragraph({
+          text: `Ceviri${targetLang ? ` (${targetLang})` : ""}`,
+          heading: HeadingLevel.HEADING_1,
+        }),
+        ...textToParagraphs(translatedText)
+      );
+    }
+
     const doc = new Document({
-      sections: [
-        {
-          children: [
-            new Paragraph({ text: title, heading: HeadingLevel.TITLE }),
-            new Paragraph({
-              text: `Orijinal Metin${sourceLang ? ` (${sourceLang})` : ""}`,
-              heading: HeadingLevel.HEADING_1,
-            }),
-            ...textToParagraphs(originalText),
-            new Paragraph({ text: "" }),
-            new Paragraph({
-              text: `Ceviri${targetLang ? ` (${targetLang})` : ""}`,
-              heading: HeadingLevel.HEADING_1,
-            }),
-            ...textToParagraphs(translatedText),
-          ],
-        },
-      ],
+      sections: [{ children }],
     });
 
     const buffer = await Packer.toBuffer(doc);

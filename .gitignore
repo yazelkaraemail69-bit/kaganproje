@@ -40,6 +40,9 @@ yarn-error.log*
 # generated shorts videos (local storage fallback, see lib/video/storage.ts)
 /public/generated-shorts
 
+# published profile store (dev/local)
+/.data
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

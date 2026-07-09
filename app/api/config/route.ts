@@ -8,8 +8,8 @@ export async function GET() {
     openRouterConfigured: openRouter,
     setupHint: openRouter ? null : OPENROUTER_SETUP_HINT,
     modules: {
-      kartvizit: { ok: true, requiresOpenRouter: false },
-      menu: { ok: true, requiresOpenRouter: false },
+      kartvizit: { ok: true, requiresOpenRouter: false, aiImages: openRouter },
+      menu: { ok: true, requiresOpenRouter: false, aiImages: openRouter },
       shorts: { ok: openRouter, requiresOpenRouter: true },
       elyazisi: { ok: openRouter, requiresOpenRouter: true, backendPort: 4000 },
     },

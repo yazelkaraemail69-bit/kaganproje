@@ -40,4 +40,55 @@
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
+
+  /* --- Gerçek restoran menüsü görünümü --- */
+  .font-menu-display {
+    font-family: var(--font-menu-display), Georgia, "Times New Roman", serif;
+  }
+
+  .font-menu-body {
+    font-family: var(--font-menu-body), Georgia, "Times New Roman", serif;
+  }
+
+  .menu-sheet {
+    background: linear-gradient(180deg, #fffef9 0%, #faf6f0 100%);
+    border: 1px solid #e8dfd0;
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.8),
+      0 4px 24px rgba(62, 47, 35, 0.08);
+  }
+
+  .menu-sheet-frame {
+    border: 2px solid color-mix(in srgb, var(--menu-accent, #b45309) 35%, #e8dfd0);
+  }
+
+  .menu-category-rule {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+  }
+
+  .menu-category-rule::before,
+  .menu-category-rule::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--menu-accent, #b45309) 50%, #d6cfc4), transparent);
+  }
+
+  .menu-price-line {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: end;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .menu-price-dots {
+    border-bottom: 1px dotted #c4b8a8;
+    min-width: 12px;
+    margin-bottom: 5px;
+    opacity: 0.85;
+  }
 }

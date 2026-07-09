@@ -1,4 +1,7 @@
-import { AUTO_THEME_ID, DEFAULT_CARD_THEME_ID } from "@/lib/themes";
+import { DEFAULT_CARD_THEME_ID, DEFAULT_MENU_THEME_ID } from "@/lib/themes";
+import { DEFAULT_CARD_LAYOUT, DEFAULT_MENU_LAYOUT } from "@/lib/layouts";
+import { DEFAULT_BUSINESS_TYPE, type BusinessType } from "@/lib/business-config";
+import type { MenuLocaleCode, MenuTranslations } from "@/lib/menu-locales";
 import {
   SHORTS_DURATION_OPTIONS,
   SHORTS_LANGUAGE_OPTIONS,
@@ -22,6 +25,7 @@ export interface BusinessCardData {
   social: SocialLinks;
   photoUrl: string;
   themeId: string;
+  layoutId: string;
 }
 
 export function createEmptyBusinessCard(): BusinessCardData {
@@ -40,6 +44,7 @@ export function createEmptyBusinessCard(): BusinessCardData {
     },
     photoUrl: "",
     themeId: DEFAULT_CARD_THEME_ID,
+    layoutId: DEFAULT_CARD_LAYOUT,
   };
 }
 
@@ -58,11 +63,21 @@ export interface MenuCategory {
 }
 
 export interface MenuData {
+  businessType: BusinessType;
   restaurantName: string;
   description: string;
   logoUrl: string;
   categories: MenuCategory[];
   themeId: string;
+  /** Paylaşım linkinden gelen otomatik tema renkleri (logo yerine). */
+  customThemeColors?: string[];
+  layoutId: string;
+  /** WhatsApp sipariş için işletme telefonu (ör. 05xx xxx xx xx). */
+  contactPhone?: string;
+  /** Yayınlanan menüde gösterilecek diller (TR her zaman dahil). */
+  enabledLocales?: MenuLocaleCode[];
+  /** Kategori ve ürün çevirileri. */
+  translations?: MenuTranslations;
 }
 
 export function createMenuItem(): MenuItem {
@@ -85,14 +100,17 @@ export function createMenuCategory(name = ""): MenuCategory {
 
 export function createEmptyMenu(): MenuData {
   return {
+    businessType: DEFAULT_BUSINESS_TYPE,
     restaurantName: "",
     description: "",
     logoUrl: "",
-    categories: [createMenuCategory("Başlangıçlar")],
-    themeId: AUTO_THEME_ID,
+    categories: [createMenuCategory("Ana Yemekler")],
+    themeId: DEFAULT_MENU_THEME_ID,
+    layoutId: DEFAULT_MENU_LAYOUT,
   };
 }
 
+/** @deprecated Use getCategorySuggestions(businessType) from business-config */
 export const MENU_CATEGORY_SUGGESTIONS = [
   "Başlangıçlar",
   "Ana Yemekler",

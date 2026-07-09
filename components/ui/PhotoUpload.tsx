@@ -4,6 +4,8 @@ import { useRef, useState } from "react";
 import { ImagePlus, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { compressImage } from "@/lib/image";
+import { AiImageButton } from "@/components/ui/AiImageButton";
+import type { DesignImageContext, DesignImageType } from "@/lib/design-prompts";
 
 interface PhotoUploadProps {
   label: string;
@@ -11,11 +13,37 @@ interface PhotoUploadProps {
   value: string;
   onChange: (dataUrl: string) => void;
   shape?: "circle" | "square";
+  aiType?: DesignImageType;
+  aiContext?: DesignImageContext;
+  aiLabel?: string;
+  promptBusinessName?: boolean;
+  businessNamePromptTitle?: string;
+  businessNamePlaceholder?: string;
+  onBusinessNameConfirm?: (name: string) => void;
+  /** @deprecated Use promptBusinessName */
+  promptRestaurantName?: boolean;
+  /** @deprecated Use onBusinessNameConfirm */
+  onRestaurantNameConfirm?: (name: string) => void;
 }
 
 const MAX_FILE_SIZE_MB = 5;
 
-export function PhotoUpload({ label, hint, value, onChange, shape = "circle" }: PhotoUploadProps) {
+export function PhotoUpload({
+  label,
+  hint,
+  value,
+  onChange,
+  shape = "circle",
+  aiType,
+  aiContext,
+  aiLabel,
+  promptBusinessName,
+  businessNamePromptTitle,
+  businessNamePlaceholder,
+  onBusinessNameConfirm,
+  promptRestaurantName,
+  onRestaurantNameConfirm,
+}: PhotoUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -67,7 +95,7 @@ export function PhotoUpload({ label, hint, value, onChange, shape = "circle" }: 
           )}
         </button>
         <div className="flex flex-col gap-1.5">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
@@ -85,6 +113,18 @@ export function PhotoUpload({ label, hint, value, onChange, shape = "circle" }: 
               </button>
             ) : null}
           </div>
+          {aiType && aiContext ? (
+            <AiImageButton
+              type={aiType}
+              context={aiContext}
+              onGenerated={onChange}
+              label={aiLabel}
+              promptBusinessName={promptBusinessName ?? promptRestaurantName}
+              businessNamePromptTitle={businessNamePromptTitle}
+              businessNamePlaceholder={businessNamePlaceholder}
+              onBusinessNameConfirm={onBusinessNameConfirm ?? onRestaurantNameConfirm}
+            />
+          ) : null}
           {hint ? <span className="text-xs text-slate-400">{hint}</span> : null}
           {error ? <span className="text-xs font-medium text-red-500">{error}</span> : null}
         </div>

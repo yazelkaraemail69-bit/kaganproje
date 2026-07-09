@@ -155,6 +155,7 @@ function updateWorkflowUI() {
   document.getElementById("upload-handwriting").hidden = !isHandwriting;
   document.getElementById("upload-pdf").hidden = isHandwriting;
   document.getElementById("skip-translate-btn").hidden = !isHandwriting;
+  updateStep2Layout();
 }
 
 function selectWorkflow(workflow) {
@@ -215,23 +216,328 @@ function resizeImage(file, maxWidth = OCR_MAX_DIMENSION) {
   });
 }
 
-function showEditPreview(images) {
-  const wrap = document.getElementById("edit-preview-wrap");
-  const grid = document.getElementById("edit-preview-grid");
-  if (!wrap || !grid) return;
+function nextImageId() {
+  return `img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
 
-  if (images?.length && state.workflow === "handwriting") {
-    grid.innerHTML = images
-      .map(
-        (img, i) =>
-          `<div class="preview-thumb"><span class="preview-thumb-num">${i + 1}</span><img src="${img.previewUrl}" alt="Sayfa ${i + 1}" /></div>`
-      )
-      .join("");
-    wrap.classList.remove("hidden");
-  } else {
-    grid.innerHTML = "";
-    wrap.classList.add("hidden");
+function statusLabel(status) {
+  if (status === "scanning") return "Taraniyor...";
+  if (status === "done") return "Tamam";
+  if (status === "error") return "Hata";
+  return "Hazir";
+}
+
+function buildPageHeader(index, total) {
+  return total > 1 ? `--- Sayfa ${index + 1} ---\n` : "";
+}
+
+function syncCombinedText() {
+  const parts = state.images
+    .map((img, i) => {
+      const text = (img.text ?? "").trim();
+      if (!text) return "";
+      return `${buildPageHeader(i, state.images.length)}${text}`;
+    })
+    .filter(Boolean);
+  state.editedText = parts.join("\n\n");
+  const combined = document.getElementById("edited-text");
+  if (combined) combined.value = state.editedText;
+}
+
+function syncCombinedTranslation() {
+  const parts = state.images
+    .map((img, i) => {
+      const text = (img.translatedText ?? "").trim();
+      if (!text) return "";
+      return `${buildPageHeader(i, state.images.length)}${text}`;
+    })
+    .filter(Boolean);
+  state.translatedText = parts.join("\n\n");
+  const el = document.getElementById("translated-text");
+  if (el) el.textContent = state.translatedText;
+}
+
+function getActiveEditedText() {
+  if (state.workflow === "pdf-translate") {
+    return document.getElementById("edited-text-pdf")?.value.trim() ?? state.editedText;
   }
+  syncCombinedText();
+  return state.editedText;
+}
+
+function photoPanelHtml(img, index, mode) {
+  const statusClass = img.status === "scanning" ? "scanning" : img.status === "done" ? "done" : img.status === "error" ? "error" : "";
+  const panelClass = img.status === "scanning" ? "is-scanning" : img.status === "error" ? "is-error" : img.status === "done" ? "is-done" : "";
+
+  if (mode === "upload") {
+    return `
+      <article class="photo-panel ${panelClass}" data-id="${img.id}">
+        <div class="photo-panel-thumb">
+          <span class="photo-panel-num">${index + 1}</span>
+          <img src="${img.previewUrl}" alt="${escapeHtml(img.name)}" />
+        </div>
+        <div class="photo-panel-body">
+          <div class="photo-panel-head">
+            <p class="photo-panel-title">Fotograf ${index + 1}</p>
+            <span class="photo-panel-status ${statusClass}">${statusLabel(img.status)}</span>
+          </div>
+          <p class="hint" style="margin:0">${escapeHtml(img.name)}</p>
+          ${
+            img.text?.trim()
+              ? `<p class="hint" style="margin:4px 0 0">Taranan metin:</p>
+          <p class="translate-panel-result upload-text-preview">${escapeHtml(img.text.trim())}</p>`
+              : ""
+          }
+          <div class="photo-panel-actions">
+            <button type="button" class="btn secondary" data-action="scan-one" data-id="${img.id}">Bu fotografi tara</button>
+            <button type="button" class="btn secondary" data-action="remove" data-id="${img.id}">Kaldir</button>
+          </div>
+          ${img.errorMessage ? `<p class="photo-panel-error">${escapeHtml(img.errorMessage)}</p>` : ""}
+        </div>
+      </article>`;
+  }
+
+  if (mode === "edit") {
+    return `
+      <article class="photo-panel ${panelClass}" data-id="${img.id}">
+        <div class="photo-panel-thumb">
+          <span class="photo-panel-num">${index + 1}</span>
+          <img src="${img.previewUrl}" alt="Sayfa ${index + 1}" />
+        </div>
+        <div class="photo-panel-body">
+          <div class="photo-panel-head">
+            <p class="photo-panel-title">Sayfa ${index + 1}</p>
+            <span class="photo-panel-status ${statusClass}">${statusLabel(img.status)}</span>
+          </div>
+          <textarea class="photo-panel-text" data-id="${img.id}" rows="6" placeholder="Bu fotografin metni...">${escapeHtml(img.text ?? "")}</textarea>
+          <div class="photo-panel-actions">
+            <button type="button" class="btn secondary" data-action="rescan-one" data-id="${img.id}">Yeniden tara</button>
+          </div>
+          ${img.errorMessage ? `<p class="photo-panel-error">${escapeHtml(img.errorMessage)}</p>` : ""}
+        </div>
+      </article>`;
+  }
+
+  // translate mode
+  const translated = (img.translatedText ?? "").trim();
+  return `
+    <article class="photo-panel" data-id="${img.id}">
+      <div class="photo-panel-thumb">
+        <span class="photo-panel-num">${index + 1}</span>
+        <img src="${img.previewUrl}" alt="Sayfa ${index + 1}" />
+      </div>
+      <div class="photo-panel-body">
+        <div class="photo-panel-head">
+          <p class="photo-panel-title">Sayfa ${index + 1} ceviri</p>
+        </div>
+        <p class="translate-panel-result ${translated ? "" : "empty"}" data-translate-result="${img.id}">${translated ? escapeHtml(translated) : "Henuz cevrilmedi"}</p>
+      </div>
+    </article>`;
+}
+
+function bindPhotoPanelActions(container, mode) {
+  if (!container) return;
+
+  container.querySelectorAll("[data-action]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.id;
+      const action = btn.dataset.action;
+      if (action === "remove") removeImage(id);
+      if (action === "scan-one") await scanSingleImage(id);
+      if (action === "rescan-one") await scanSingleImage(id, { goToEdit: false });
+    });
+  });
+
+  if (mode === "edit") {
+    container.querySelectorAll(".photo-panel-text").forEach((ta) => {
+      ta.addEventListener("input", () => {
+        const img = state.images.find((i) => i.id === ta.dataset.id);
+        if (img) {
+          img.text = ta.value;
+          img.status = ta.value.trim() ? "done" : "ready";
+          syncCombinedText();
+        }
+      });
+    });
+  }
+}
+
+function renderUploadPanels() {
+  const container = document.getElementById("photo-upload-panels");
+  if (!container) return;
+
+  if (state.images.length === 0) {
+    container.hidden = true;
+    container.innerHTML = "";
+    return;
+  }
+
+  container.hidden = false;
+  container.innerHTML = state.images.map((img, i) => photoPanelHtml(img, i, "upload")).join("");
+  bindPhotoPanelActions(container, "upload");
+}
+
+function renderEditPanels() {
+  const container = document.getElementById("photo-edit-panels");
+  if (!container) return;
+
+  container.innerHTML = state.images.map((img, i) => photoPanelHtml(img, i, "edit")).join("");
+  bindPhotoPanelActions(container, "edit");
+  syncCombinedText();
+
+  const rescanAll = document.getElementById("rescan-all-btn");
+  if (rescanAll) rescanAll.hidden = state.images.length === 0;
+}
+
+function hasActiveTranslation() {
+  return state.translatedText.length > 0 && !state.skippedTranslation;
+}
+
+function getExportContent() {
+  if (hasActiveTranslation()) {
+    return { text: state.translatedText, title: "Ceviri" };
+  }
+  return {
+    text: state.editedText,
+    title: state.workflow === "pdf-translate" ? "Orijinal PDF Metni" : "Dijitallestirilmis Metin",
+  };
+}
+
+function renderExportPanels() {
+  const container = document.getElementById("photo-export-panels");
+  const combined = document.getElementById("export-combined");
+  if (!container) return;
+
+  const show = state.workflow === "handwriting" && state.images.length > 0;
+  container.hidden = !show;
+  if (combined) combined.hidden = show;
+
+  if (!show) {
+    container.innerHTML = "";
+    return;
+  }
+
+  const translationOnly = hasActiveTranslation();
+  container.innerHTML = state.images
+    .map((img, i) => {
+      const source = (img.text ?? "").trim();
+      const translated = (img.translatedText ?? "").trim();
+      const displayText = translationOnly ? translated : source;
+      const label = translationOnly ? "Ceviri" : "Metin";
+      return `
+    <article class="photo-panel is-done" data-id="${img.id}">
+      <div class="photo-panel-thumb">
+        <span class="photo-panel-num">${i + 1}</span>
+        <img src="${img.previewUrl}" alt="Sayfa ${i + 1}" />
+      </div>
+      <div class="photo-panel-body">
+        <div class="photo-panel-head">
+          <p class="photo-panel-title">Sayfa ${i + 1}</p>
+        </div>
+        <p class="hint" style="margin:0 0 4px">${label}:</p>
+        <p class="translate-panel-result">${displayText ? escapeHtml(displayText) : "—"}</p>
+      </div>
+    </article>`;
+    })
+    .join("");
+}
+
+function renderTranslatePanels() {
+  const container = document.getElementById("photo-translate-panels");
+  const resultBox = document.getElementById("translation-result");
+  if (!container) return;
+
+  const show = state.workflow === "handwriting" && state.images.length > 0;
+  container.hidden = !show;
+  if (resultBox) resultBox.hidden = show;
+
+  if (!show) {
+    container.innerHTML = "";
+    return;
+  }
+
+  container.innerHTML = state.images.map((img, i) => photoPanelHtml(img, i, "translate")).join("");
+}
+
+function updateStep2Layout() {
+  const isHandwriting = state.workflow === "handwriting";
+  document.getElementById("step2-handwriting").hidden = !isHandwriting;
+  document.getElementById("step2-pdf").hidden = isHandwriting;
+  if (!isHandwriting) {
+    document.getElementById("step2-pdf-hint").textContent = WORKFLOW_META["pdf-translate"].step2Hint;
+  }
+}
+
+function removeImage(id) {
+  state.images = state.images.filter((img) => img.id !== id);
+  renderImagePreviews();
+  renderUploadPanels();
+  syncCombinedText();
+  setStatus("step1-status", "");
+}
+
+async function scanSingleImage(id, options = {}) {
+  const { goToEdit = true } = options;
+  const img = state.images.find((i) => i.id === id);
+  if (!img) return;
+
+  const langHint = document.getElementById("source-lang-hint")?.value || undefined;
+  const model = getSelectedModel();
+  const index = state.images.indexOf(img);
+
+  img.status = "scanning";
+  img.errorMessage = "";
+  renderUploadPanels();
+  renderEditPanels();
+  setStatus("step1-status", `Metin taraniyor (${index + 1}/${state.images.length})...`);
+
+  try {
+    const result = await apiPost("/api/ocr", {
+      imageBase64: img.base64,
+      mimeType: img.mimeType,
+      sourceLangHint: langHint || undefined,
+      model,
+    });
+    img.text = result.text;
+    img.status = "done";
+    syncCombinedText();
+    renderUploadPanels();
+    renderEditPanels();
+    setStatus("step1-status", `Sayfa ${index + 1} tarandi.`);
+    if (goToEdit) {
+      updateStep2Layout();
+      showStep(2);
+    }
+  } catch (error) {
+    img.status = "error";
+    img.errorMessage = error.message;
+    renderUploadPanels();
+    renderEditPanels();
+    setStatus("step1-status", error.message, true);
+  }
+}
+
+async function scanAllImages() {
+  if (state.images.length === 0) return;
+
+  ocrBtn.disabled = true;
+  state.translatedText = "";
+  state.skippedTranslation = false;
+
+  for (const img of state.images) {
+    if (img.status !== "done" || !img.text?.trim()) {
+      await scanSingleImage(img.id, { goToEdit: false });
+      if (img.status === "error") break;
+    }
+  }
+
+  syncCombinedText();
+  updateStep2Layout();
+  renderEditPanels();
+  renderTranslatePanels();
+  setStatus("step1-status", `${state.images.length} fotograf islendi.`);
+  showStep(2);
+  ocrBtn.disabled = false;
 }
 
 function renderImagePreviews() {
@@ -248,16 +554,19 @@ function renderImagePreviews() {
     grid.innerHTML = "";
     placeholder.hidden = false;
     box.classList.add("empty");
+    box.hidden = false;
     if (countEl) countEl.hidden = true;
     if (clearBtn) clearBtn.hidden = true;
     const scanBtn = document.getElementById("ocr-btn");
     if (scanBtn) scanBtn.disabled = true;
+    renderUploadPanels();
     return;
   }
 
   placeholder.hidden = true;
   box.classList.remove("empty");
-  grid.hidden = false;
+  box.hidden = true;
+  grid.hidden = true;
   grid.innerHTML = state.images
     .map(
       (img, i) =>
@@ -272,6 +581,7 @@ function renderImagePreviews() {
   if (clearBtn) clearBtn.hidden = false;
   const scanBtn = document.getElementById("ocr-btn");
   if (scanBtn) scanBtn.disabled = false;
+  renderUploadPanels();
 }
 
 async function addImagesFromFiles(fileList) {
@@ -292,10 +602,15 @@ async function addImagesFromFiles(fileList) {
     for (const file of files) {
       const result = await resizeImage(file);
       state.images.push({
+        id: nextImageId(),
         base64: result.base64,
         mimeType: result.mimeType,
         previewUrl: result.previewUrl,
         name: file.name,
+        text: "",
+        translatedText: "",
+        status: "ready",
+        errorMessage: "",
       });
     }
     renderImagePreviews();
@@ -395,45 +710,10 @@ pdfInput.addEventListener("change", () => {
   setStatus("step1-status", "");
 });
 
+document.getElementById("rescan-all-btn")?.addEventListener("click", () => scanAllImages());
+
 // --- OCR (el yazisi) ---
-ocrBtn.addEventListener("click", async () => {
-  if (state.images.length === 0) return;
-
-  ocrBtn.disabled = true;
-  const langHint = document.getElementById("source-lang-hint")?.value || undefined;
-  const model = getSelectedModel();
-  const textParts = [];
-
-  try {
-    for (let i = 0; i < state.images.length; i++) {
-      const img = state.images[i];
-      setStatus("step1-status", `Metin taraniyor (${i + 1}/${state.images.length})...`);
-
-      const result = await apiPost("/api/ocr", {
-        imageBase64: img.base64,
-        mimeType: img.mimeType,
-        sourceLangHint: langHint || undefined,
-        model,
-      });
-
-      const header = state.images.length > 1 ? `--- Sayfa ${i + 1} ---\n` : "";
-      textParts.push(`${header}${result.text}`);
-    }
-
-    const combinedText = textParts.join("\n\n");
-    state.editedText = combinedText;
-    state.translatedText = "";
-    state.skippedTranslation = false;
-    document.getElementById("edited-text").value = combinedText;
-    showEditPreview(state.images);
-    setStatus("step1-status", `${state.images.length} fotograf tarandi.`);
-    showStep(2);
-  } catch (error) {
-    setStatus("step1-status", error.message, true);
-  } finally {
-    ocrBtn.disabled = false;
-  }
-});
+ocrBtn.addEventListener("click", () => scanAllImages());
 
 // --- PDF metin cikarma ---
 extractPdfBtn.addEventListener("click", async () => {
@@ -449,8 +729,7 @@ extractPdfBtn.addEventListener("click", async () => {
     state.translatedText = "";
     state.skippedTranslation = false;
     document.getElementById("pdf-page-count").textContent = `${result.pageCount} sayfa`;
-    document.getElementById("edited-text").value = result.text;
-    showEditPreview(null);
+    document.getElementById("edited-text-pdf").value = result.text;
     setStatus("step1-status", `${result.pageCount} sayfadan metin cikarildi.`);
     showStep(2);
   } catch (error) {
@@ -462,11 +741,12 @@ extractPdfBtn.addEventListener("click", async () => {
 
 // --- Duzenle -> Cevir ---
 document.getElementById("to-translate-btn").addEventListener("click", () => {
-  state.editedText = document.getElementById("edited-text").value.trim();
+  state.editedText = getActiveEditedText();
   if (!state.editedText) {
-    alert("Lutfen once metni duzenleyin veya yukleyin.");
+    alert("Lutfen once metni duzenleyin veya fotograflari tarayin.");
     return;
   }
+  renderTranslatePanels();
   showStep(3);
 });
 
@@ -475,26 +755,60 @@ const translateBtn = document.getElementById("translate-btn");
 const toExportBtn = document.getElementById("to-export-btn");
 
 translateBtn.addEventListener("click", async () => {
-  state.editedText = document.getElementById("edited-text").value.trim();
+  state.editedText = getActiveEditedText();
   const sourceLang = document.getElementById("source-lang").value;
   const targetLang = document.getElementById("target-lang").value;
+  const model = getSelectedModel();
+  const usePanels = state.workflow === "handwriting" && state.images.length > 0;
 
   translateBtn.disabled = true;
   setStatus("step3-status", "Ceviri yapiliyor...");
 
   try {
-    const result = await apiPost("/api/translate", {
-      text: state.editedText,
-      sourceLang,
-      targetLang,
-      model: getSelectedModel(),
-    });
-    state.translatedText = result.translatedText;
+    if (usePanels) {
+      for (let i = 0; i < state.images.length; i++) {
+        const img = state.images[i];
+        const sourceText = (img.text ?? "").trim();
+        if (!sourceText) {
+          img.translatedText = "";
+          continue;
+        }
+        setStatus("step3-status", `Ceviri yapiliyor (${i + 1}/${state.images.length})...`);
+        const result = await apiPost("/api/translate", {
+          text: sourceText,
+          sourceLang,
+          targetLang,
+          model,
+        });
+        img.translatedText = result.translatedText;
+        const resultEl = document.querySelector(`[data-translate-result="${img.id}"]`);
+        if (resultEl) {
+          resultEl.textContent = result.translatedText;
+          resultEl.classList.remove("empty");
+        }
+      }
+      syncCombinedTranslation();
+      renderTranslatePanels();
+    } else {
+      const result = await apiPost("/api/translate", {
+        text: state.editedText,
+        sourceLang,
+        targetLang,
+        model,
+      });
+      state.translatedText = result.translatedText;
+      if (state.images.length === 1) state.images[0].translatedText = result.translatedText;
+      document.getElementById("translated-text").textContent = result.translatedText;
+      document.getElementById("translation-result").hidden = false;
+      setStatus("step3-status", `Tamamlandi (${result.modelLabel ?? result.modelUsed})`);
+    }
+
     state.skippedTranslation = false;
-    document.getElementById("translated-text").textContent = result.translatedText;
-    document.getElementById("translation-result").hidden = false;
+    if (usePanels) {
+      document.getElementById("translation-result").hidden = true;
+      setStatus("step3-status", "Tum sayfalar cevrildi.");
+    }
     toExportBtn.disabled = false;
-    setStatus("step3-status", `Tamamlandi (${result.modelLabel ?? result.modelUsed})`);
   } catch (error) {
     setStatus("step3-status", error.message, true);
   } finally {
@@ -514,9 +828,15 @@ document.getElementById("skip-translate-btn").addEventListener("click", () => {
 toExportBtn.addEventListener("click", goToExport);
 
 function goToExport() {
-  const meta = WORKFLOW_META[state.workflow];
-  const hasTranslation = state.translatedText.length > 0;
+  state.editedText = getActiveEditedText();
+  if (state.workflow === "handwriting" && state.images.length > 0) {
+    syncCombinedTranslation();
+  }
+  const hasTranslation = hasActiveTranslation();
+  const exportContent = getExportContent();
 
+  document.getElementById("export-original-label").hidden = hasTranslation;
+  document.getElementById("export-original").hidden = hasTranslation;
   document.getElementById("export-original").textContent = state.editedText;
   document.getElementById("export-translated").textContent = state.translatedText;
 
@@ -525,10 +845,13 @@ function goToExport() {
 
   document.getElementById("export-original-label").textContent =
     state.workflow === "pdf-translate" ? "Orijinal PDF Metni" : "Dijitallestirilmis Metin";
-  document.getElementById("export-translated-label").textContent = hasTranslation
-    ? "Ceviri"
-    : "Ceviri";
+  document.getElementById("export-translated-label").textContent = "Ceviri";
 
+  if (hasTranslation) {
+    document.getElementById("export-translated").textContent = exportContent.text;
+  }
+
+  renderExportPanels();
   showStep(4);
 }
 
@@ -548,24 +871,18 @@ function getExportMeta() {
 
 document.getElementById("export-txt-btn").addEventListener("click", () => {
   const meta = getExportMeta();
-  const hasTranslation = state.translatedText.length > 0;
-  const lines = hasTranslation
-    ? ["=== ORIJINAL METIN ===", state.editedText, "", "=== CEVIRI ===", state.translatedText]
-    : [state.editedText];
-  downloadBlob(`${meta.exportFilename}.txt`, new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" }));
+  const { text } = getExportContent();
+  downloadBlob(`${meta.exportFilename}.txt`, new Blob([text], { type: "text/plain;charset=utf-8" }));
 });
 
 document.getElementById("export-pdf-btn").addEventListener("click", () => {
   const meta = getExportMeta();
-  const hasTranslation = state.translatedText.length > 0;
+  const { text, title } = getExportContent();
   const printArea = document.getElementById("print-area");
 
   let html = `<h1>${escapeHtml(meta.exportTitle)}</h1>`;
-  html += `<h2>${state.workflow === "pdf-translate" ? "Orijinal PDF Metni" : "Dijitallestirilmis Metin"}</h2>`;
-  html += `<p>${escapeHtml(state.editedText).replace(/\n/g, "<br>")}</p>`;
-  if (hasTranslation) {
-    html += `<h2>Ceviri</h2><p>${escapeHtml(state.translatedText).replace(/\n/g, "<br>")}</p>`;
-  }
+  html += `<h2>${escapeHtml(title)}</h2>`;
+  html += `<p>${escapeHtml(text).replace(/\n/g, "<br>")}</p>`;
 
   printArea.innerHTML = html;
   printArea.hidden = false;
@@ -584,8 +901,8 @@ document.getElementById("export-docx-btn").addEventListener("click", async () =>
         "x-app-secret": getSecret(),
       },
       body: JSON.stringify({
-        originalText: state.editedText,
-        translatedText: state.translatedText,
+        originalText: hasActiveTranslation() ? "" : state.editedText,
+        translatedText: hasActiveTranslation() ? state.translatedText : "",
         title: meta.exportTitle,
       }),
     });
@@ -618,14 +935,18 @@ document.getElementById("restart-btn").addEventListener("click", () => {
   pdfFileInfo.hidden = true;
   pdfPreviewBox.classList.add("empty");
 
+  document.getElementById("edited-text-pdf").value = "";
   document.getElementById("edited-text").value = "";
+  document.getElementById("photo-edit-panels").innerHTML = "";
+  document.getElementById("photo-upload-panels").innerHTML = "";
+  document.getElementById("photo-translate-panels").innerHTML = "";
+  document.getElementById("photo-export-panels").innerHTML = "";
+  document.getElementById("export-combined").hidden = false;
   document.getElementById("translation-result").hidden = true;
   document.getElementById("translated-text").textContent = "";
   toExportBtn.disabled = true;
   ocrBtn.disabled = true;
   extractPdfBtn.disabled = true;
-  showEditPreview(null);
-
   ["step1-status", "step3-status", "step4-status"].forEach((id) => setStatus(id, ""));
   showStep(0);
 });

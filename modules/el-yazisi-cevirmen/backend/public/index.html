@@ -72,9 +72,9 @@
           </label>
           <p id="model-hint" class="mode-hint"></p>
 
-          <div id="upload-handwriting">
+            <div id="upload-handwriting">
             <h2>El yazisi fotografi yukleyin</h2>
-            <p class="hint">En fazla 10 fotograf ekleyebilirsiniz. Iyi isikta, net cekim yapin.</p>
+            <p class="hint">En fazla 10 fotograf. Her biri icin ayri panel acilir.</p>
 
             <label class="lang-hint-label">
               Yazinin dili
@@ -96,6 +96,7 @@
                 <div id="preview-grid" class="preview-grid" hidden></div>
               </div>
               <p id="image-count" class="image-count" hidden></p>
+              <div id="photo-upload-panels" class="photo-panels" hidden></div>
               <button type="button" id="pick-image-btn" class="btn primary">Fotograf Ekle</button>
               <button type="button" id="clear-images-btn" class="btn secondary full" hidden>Tumunu Temizle</button>
             </div>
@@ -132,15 +133,25 @@
 
         <!-- Adim 2 -->
         <section id="step-2" class="panel">
-          <h2>Metni duzenleyin</h2>
-          <p id="step2-hint" class="hint">Tarama sonucunu kontrol edip duzeltin.</p>
-
-          <div id="edit-preview-wrap" class="edit-preview-wrap hidden">
-            <p class="hint">Orijinal fotograflar — metni karsilastirarak duzeltin:</p>
-            <div id="edit-preview-grid" class="preview-grid"></div>
+          <div id="step2-handwriting">
+            <div class="step2-toolbar">
+              <div>
+                <h2>Metni duzenleyin</h2>
+                <p id="step2-hint" class="hint">Her fotograf icin ayri panelde metni kontrol edin.</p>
+              </div>
+              <button type="button" id="rescan-all-btn" class="btn secondary" hidden>Tumunu yeniden tara</button>
+            </div>
+            <div id="photo-edit-panels" class="photo-panels"></div>
+            <details class="combined-preview" id="combined-preview" open>
+              <summary>Birlestirilmis metin onizleme</summary>
+              <textarea id="edited-text" rows="8" readonly placeholder="Fotograflar tarandikca burada birlesir..."></textarea>
+            </details>
           </div>
-
-          <textarea id="edited-text" rows="14" placeholder="Metin burada gorunecek..."></textarea>
+          <div id="step2-pdf" hidden>
+            <h2>Metni duzenleyin</h2>
+            <p id="step2-pdf-hint" class="hint">PDF'den cikarilan metni kontrol edip duzeltin.</p>
+            <textarea id="edited-text-pdf" rows="14" placeholder="Metin burada gorunecek..."></textarea>
+          </div>
           <button type="button" id="to-translate-btn" class="btn primary full">Devam Et: Cevir</button>
         </section>
 
@@ -171,12 +182,13 @@
               </select>
             </label>
           </div>
+          <div id="photo-translate-panels" class="photo-panels" hidden></div>
           <button type="button" id="translate-btn" class="btn primary full">Cevir</button>
           <button type="button" id="skip-translate-btn" class="btn secondary full" hidden>
             Ceviri yapmadan devam et
           </button>
           <div id="translation-result" class="result-box" hidden>
-            <h3>Ceviri</h3>
+            <h3>Ceviri (birlestirilmis)</h3>
             <p id="translated-text"></p>
           </div>
           <button type="button" id="to-export-btn" class="btn secondary full" disabled>Devam Et: Disa Aktar</button>
@@ -186,7 +198,8 @@
         <!-- Adim 4 -->
         <section id="step-4" class="panel">
           <h2>Disa aktarin</h2>
-          <div class="preview-text">
+          <div id="photo-export-panels" class="photo-panels" hidden></div>
+          <div id="export-combined" class="preview-text">
             <h3 id="export-original-label">Orijinal</h3>
             <p id="export-original"></p>
             <div id="export-translated-section">

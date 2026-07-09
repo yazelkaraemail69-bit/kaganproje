@@ -23,10 +23,20 @@ export const THEME_PRESETS: ThemePreset[] = [
   { id: "rose", name: "Mercan", from: "#fb7185", to: "#a21caf", text: "#ffffff", accent: "#e11d48" },
   { id: "gold", name: "Siyah & Altın", from: "#18181b", to: "#78350f", text: "#fde68a", accent: "#b45309" },
   { id: "cloud", name: "Bulut", from: "#f8fafc", to: "#e2e8f0", text: "#0f172a", accent: "#475569", isLight: true },
+  // Menü araştırması: sıcak tonlar iştah açar, koyu lüks fine dining, sage sağlıklı
+  { id: "amber", name: "Kehribar", from: "#d97706", to: "#92400e", text: "#fffbeb", accent: "#f59e0b" },
+  { id: "truffle", name: "Trüf Lüks", from: "#1c1917", to: "#44403c", text: "#fafaf9", accent: "#ca8a04" },
+  { id: "sage", name: "Adaçayı", from: "#65a30d", to: "#365314", text: "#ffffff", accent: "#84cc16" },
+  { id: "espresso", name: "Espresso", from: "#78350f", to: "#451a03", text: "#fef3c7", accent: "#d97706" },
+  // Kartvizit araştırması: executive navy, soft blush, charcoal minimal
+  { id: "executive", name: "Executive", from: "#1e3a5f", to: "#0f172a", text: "#f8fafc", accent: "#38bdf8" },
+  { id: "blush", name: "Soft Blush", from: "#fce7f3", to: "#fbcfe8", text: "#831843", accent: "#db2777", isLight: true },
+  { id: "charcoal", name: "Charcoal", from: "#27272a", to: "#09090b", text: "#fafafa", accent: "#a1a1aa" },
+  { id: "copper", name: "Bakır Folyo", from: "#292524", to: "#57534e", text: "#fef3c7", accent: "#d97706" },
 ];
 
-export const DEFAULT_CARD_THEME_ID = "indigo";
-export const DEFAULT_MENU_THEME_ID = "sunset";
+export const DEFAULT_CARD_THEME_ID = "executive";
+export const DEFAULT_MENU_THEME_ID = "amber";
 /** Special menu-only theme id: derive the palette from the uploaded logo instead of a preset. */
 export const AUTO_THEME_ID = "auto";
 

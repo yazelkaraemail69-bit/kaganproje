@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { MenuPreview } from "@/components/menu/MenuPreview";
+import { getBusinessConfig } from "@/lib/business-config";
 import { decodeMenuShareData } from "@/lib/share";
 import type { MenuData } from "@/lib/types";
 
@@ -19,10 +20,11 @@ function parseMenuData(encoded: string | null): MenuData | null {
 export function MenuViewClient() {
   const searchParams = useSearchParams();
   const data = parseMenuData(searchParams.get("d"));
+  const title = data ? getBusinessConfig(data.businessType).catalogTitle : "Dijital Katalog";
 
   return (
     <main className="flex flex-1 flex-col">
-      <PageHeader title="Dijital Menü" />
+      <PageHeader title={`Dijital ${title}`} />
       {data ? (
         <div className="container-app py-10 sm:py-14">
           <MenuPreview data={data} readOnly />

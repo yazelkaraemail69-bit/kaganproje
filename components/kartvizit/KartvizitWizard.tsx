@@ -10,6 +10,7 @@ import { StepSocial } from "@/components/kartvizit/StepSocial";
 import { StepTheme } from "@/components/kartvizit/StepTheme";
 import { CardPreview } from "@/components/kartvizit/CardPreview";
 import { createEmptyBusinessCard, type BusinessCardData, type SocialLinks } from "@/lib/types";
+import { clearStoredProfileSlug } from "@/lib/profile-slug-storage";
 
 const STEP_LABELS = ["Kişisel Bilgiler", "İletişim", "Sosyal Medya", "Tema"];
 const TOTAL_STEPS = STEP_LABELS.length;
@@ -56,6 +57,7 @@ export function KartvizitWizard() {
   }
 
   function handleReset() {
+    clearStoredProfileSlug("card");
     setData(createEmptyBusinessCard());
     setStep(1);
     setError("");

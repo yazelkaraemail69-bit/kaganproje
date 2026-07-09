@@ -4,13 +4,16 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Stepper } from "@/components/ui/Stepper";
+import { StepBusinessType } from "@/components/menu/StepBusinessType";
 import { StepRestaurantInfo } from "@/components/menu/StepRestaurantInfo";
 import { StepMenuItems } from "@/components/menu/StepMenuItems";
 import { StepTheme } from "@/components/menu/StepTheme";
 import { MenuPreview } from "@/components/menu/MenuPreview";
+import { getBusinessConfig } from "@/lib/business-config";
 import { createEmptyMenu, type MenuData } from "@/lib/types";
+import { clearStoredProfileSlug } from "@/lib/profile-slug-storage";
 
-const STEP_LABELS = ["Restoran Bilgisi", "Ürünler", "Tema"];
+const STEP_LABELS = ["İşletme Türü", "İşletme Bilgisi", "Ürünler & Hizmetler", "Tema"];
 const TOTAL_STEPS = STEP_LABELS.length;
 
 export function MenuWizard() {
@@ -24,16 +27,18 @@ export function MenuWizard() {
   }
 
   function validateStep(): boolean {
-    if (step === 1 && !data.restaurantName.trim()) {
-      setError("Lütfen restoran adını girin.");
+    const config = getBusinessConfig(data.businessType);
+
+    if (step === 2 && !data.restaurantName.trim()) {
+      setError(`Lütfen ${config.businessNameLabel.toLowerCase()} girin.`);
       return false;
     }
-    if (step === 2) {
+    if (step === 3) {
       const hasAtLeastOneItem = data.categories.some((category) =>
         category.items.some((item) => item.name.trim())
       );
       if (!hasAtLeastOneItem) {
-        setError("Lütfen en az bir ürün ekleyin.");
+        setError(`Lütfen en az bir ${config.itemLabel.toLowerCase()} ekleyin.`);
         return false;
       }
     }
@@ -46,6 +51,7 @@ export function MenuWizard() {
     if (step < TOTAL_STEPS) {
       setStep((current) => current + 1);
     } else {
+      setError("");
       setView("preview");
     }
   }
@@ -56,6 +62,7 @@ export function MenuWizard() {
   }
 
   function handleReset() {
+    clearStoredProfileSlug("catalog");
     setData(createEmptyMenu());
     setStep(1);
     setError("");
@@ -81,9 +88,10 @@ export function MenuWizard() {
           Adım {step}: {STEP_LABELS[step - 1]}
         </h2>
 
-        {step === 1 ? <StepRestaurantInfo data={data} onChange={updateData} /> : null}
-        {step === 2 ? <StepMenuItems data={data} onChange={updateData} /> : null}
-        {step === 3 ? <StepTheme data={data} onChange={updateData} /> : null}
+        {step === 1 ? <StepBusinessType data={data} onChange={updateData} /> : null}
+        {step === 2 ? <StepRestaurantInfo data={data} onChange={updateData} /> : null}
+        {step === 3 ? <StepMenuItems data={data} onChange={updateData} /> : null}
+        {step === 4 ? <StepTheme data={data} onChange={updateData} /> : null}
 
         {error ? (
           <p className="mt-4 rounded-lg bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-600">{error}</p>
