@@ -48,6 +48,18 @@ export const SHORTS_VIDEO_STATUS_MESSAGE =
 export const INVITE_BONUS_CREDITS = 50;
 export const COMPANY_THRESHOLD_SUBSCRIBERS = 15;
 
+/**
+ * Kurucu üye kampanyası: ilk N kayıt Başlangıç planını ücretsiz kullanır.
+ * Koltuk sayısı atomik dosya kilidi ile korunur (31. kişi alamaz).
+ *
+ * Süre: 7 gün ücretsiz. 1 arkadaş kayıt olunca (tek sefer) toplam 10 güne uzar.
+ */
+export const FOUNDING_MEMBER_LIMIT = 30;
+export const FOUNDING_PLAN_ID: PaidPlanId = "starter";
+export const FOUNDING_FREE_DAYS = 7;
+/** 1 başarılı davet sonrası toplam ücretsiz gün (tek seferlik) */
+export const FOUNDING_REFERRAL_TOTAL_DAYS = 10;
+
 export const CREDIT_COSTS: CreditCosts = {
   ocrPhoto: 8,
   translatePage: 5,

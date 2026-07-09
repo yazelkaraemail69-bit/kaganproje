@@ -2,6 +2,7 @@ import { Clapperboard, CreditCard, PenLine, Tag, UserRound, UtensilsCrossed } fr
 import Link from "next/link";
 import { FeatureCard } from "@/components/dashboard/FeatureCard";
 import { SiteFooter } from "@/components/layout/SiteFooter";
+import { FoundingBanner } from "@/components/billing/FoundingBanner";
 
 export default function DashboardPage() {
   return (
@@ -32,6 +33,9 @@ export default function DashboardPage() {
             QR kartvizit, dijital menü ve el yazısı çeviri. Abonelik + AI kredisi ile büyüyün;
             Shorts video geliştirme aşamasında.
           </p>
+          <div className="mx-auto mt-6 max-w-xl text-left">
+            <FoundingBanner />
+          </div>
         </div>
       </section>
 

@@ -3,7 +3,7 @@ import type { BillingPeriod, PlanId } from "@/lib/billing/plans";
 /** Geriye uyumluluk: eski "pro" kayıtları geçerli kalır */
 export type AccountPlan = PlanId;
 
-export type PaymentMethod = "iyzico_link" | "manual";
+export type PaymentMethod = "iyzico_link" | "manual" | "founding";
 
 export interface AccountRecord {
   id: string;
@@ -23,6 +23,12 @@ export interface AccountRecord {
   inviteBonusGranted?: boolean;
   planExpiresAt?: string;
   paymentMethod?: PaymentMethod;
+  /** İlk 30 kurucu üyeden biri */
+  foundingMember?: boolean;
+  /** Kurucu koltuk no (1..30) */
+  foundingSeat?: number;
+  /** 1 arkadaş davetiyle 10 güne uzatma kullanıldı mı */
+  foundingReferralExtended?: boolean;
   /** Eski Stripe alanları (opsiyonel, kullanılmıyor) */
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
@@ -45,6 +51,10 @@ export interface PublicAccount {
   credits: number;
   inviteCode: string;
   planExpiresAt?: string;
+  paymentMethod?: PaymentMethod;
+  foundingMember?: boolean;
+  foundingSeat?: number;
+  foundingReferralExtended?: boolean;
   subscriptionStatus?: AccountRecord["subscriptionStatus"];
   crmWebhookUrl?: string;
   crmEvents?: AccountRecord["crmEvents"];
@@ -86,6 +96,10 @@ export function toPublicAccount(account: AccountRecord): PublicAccount {
     credits: account.credits ?? 0,
     inviteCode: account.inviteCode ?? "",
     planExpiresAt: account.planExpiresAt,
+    paymentMethod: account.paymentMethod,
+    foundingMember: account.foundingMember,
+    foundingSeat: account.foundingSeat,
+    foundingReferralExtended: account.foundingReferralExtended,
     subscriptionStatus: account.subscriptionStatus,
     crmWebhookUrl: account.crmWebhookUrl,
     crmEvents: account.crmEvents,

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PricingTable } from "@/components/billing/PricingTable";
+import { FoundingBanner } from "@/components/billing/FoundingBanner";
 import { COMPANY_THRESHOLD_SUBSCRIBERS } from "@/lib/billing/plans";
 
 export const metadata: Metadata = {
@@ -39,6 +40,9 @@ export default function FiyatlandirmaPage() {
         </div>
       </section>
       <section className="container-app py-10 sm:py-14">
+        <div className="mb-8">
+          <FoundingBanner />
+        </div>
         <PricingTable />
       </section>
     </main>

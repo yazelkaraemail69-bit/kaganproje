@@ -9,6 +9,12 @@ import {
 } from "@/lib/domains/account/plan";
 import type { AccountRecord, PublicAccount } from "@/lib/domains/account/types";
 import { toPublicAccount } from "@/lib/domains/account/types";
+import {
+  applyFoundingBenefits,
+  tryClaimFoundingSeat,
+  type FoundingClaimResult,
+} from "@/lib/billing/founding";
+import { applyFoundingReferralExtension } from "@/lib/billing/invite";
 
 const DATA_DIR = path.join(process.cwd(), ".data", "accounts");
 
@@ -21,7 +27,6 @@ function filePath(id: string): string {
   return path.join(DATA_DIR, `${safe}.json`);
 }
 
-/** Eski kayıtlara credits / inviteCode ekler */
 function normalizeAccount(raw: AccountRecord): AccountRecord {
   return {
     ...raw,
@@ -79,7 +84,7 @@ export async function createAccount(input: {
   name: string;
   password: string;
   inviteCode?: string;
-}): Promise<AccountRecord> {
+}): Promise<{ account: AccountRecord; founding: FoundingClaimResult }> {
   const email = normalizeEmail(input.email);
   const existing = await getAccountByEmail(email);
   if (existing) {
@@ -88,7 +93,7 @@ export async function createAccount(input: {
 
   const now = new Date().toISOString();
   const id = createAccountId(email);
-  const account: AccountRecord = {
+  let account: AccountRecord = {
     id,
     email,
     name: input.name.trim() || email.split("@")[0],
@@ -104,8 +109,21 @@ export async function createAccount(input: {
     updatedAt: now,
   };
 
+  const founding = await tryClaimFoundingSeat(id);
+  if (founding.granted) {
+    account = applyFoundingBenefits(account, founding);
+  }
+
   await saveAccount(account);
-  return account;
+
+  // Arkadaş kayıt olduysa davet eden kurucu üyenin süresini 7→10 güne uzat
+  try {
+    await applyFoundingReferralExtension(account.id);
+  } catch (error) {
+    console.error("Founding referral extension failed:", error);
+  }
+
+  return { account, founding };
 }
 
 export async function authenticateAccount(
@@ -153,12 +171,12 @@ export async function getPublicAccount(id: string): Promise<PublicAccount | null
   return account ? toPublicAccount(account) : null;
 }
 
-/** Aktif ücretli abone sayısı (şirket eşiği için) */
 export async function countActiveSubscribers(): Promise<number> {
   const accounts = await listAccounts();
   const now = Date.now();
   return accounts.filter((a) => {
     if (a.plan === "free") return false;
+    if (a.paymentMethod === "founding") return false;
     if (a.subscriptionStatus !== "active") return false;
     if (a.planExpiresAt && new Date(a.planExpiresAt).getTime() < now) return false;
     return true;

@@ -7,6 +7,11 @@ import {
   createSessionToken,
   sessionCookieOptions,
 } from "@/lib/auth/session";
+import {
+  FOUNDING_FREE_DAYS,
+  FOUNDING_MEMBER_LIMIT,
+  FOUNDING_REFERRAL_TOTAL_DAYS,
+} from "@/lib/billing/plans";
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -29,14 +34,30 @@ export async function POST(request: Request) {
   }
 
   try {
-    const account = await createAccount({
+    const { account, founding } = await createAccount({
       email: parsed.data.email,
       name: parsed.data.name,
       password: parsed.data.password,
       inviteCode: parsed.data.inviteCode,
     });
     const token = createSessionToken(account.id, account.email);
-    const response = NextResponse.json({ account: toPublicAccount(account) });
+
+    const foundingMessage = founding.granted
+      ? `Kurucu üye #${founding.seat}/${FOUNDING_MEMBER_LIMIT}: Başlangıç planı ${FOUNDING_FREE_DAYS} gün ücretsiz. 1 arkadaş davet ederseniz süre ${FOUNDING_REFERRAL_TOTAL_DAYS} güne çıkar.`
+      : "Kurucu üye kontenjanı doldu. Ücretsiz taslak hesabınız hazır; paketleri /fiyatlandirma sayfasından seçebilirsiniz.";
+
+    const response = NextResponse.json({
+      account: toPublicAccount(account),
+      founding: {
+        granted: founding.granted,
+        seat: founding.seat,
+        remaining: founding.remaining,
+        limit: founding.limit,
+        freeDays: founding.freeDays,
+        referralTotalDays: founding.referralTotalDays,
+        message: foundingMessage,
+      },
+    });
     response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
     return response;
   } catch (error) {

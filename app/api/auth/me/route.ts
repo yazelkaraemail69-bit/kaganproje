@@ -7,12 +7,16 @@ import {
   COMPANY_THRESHOLD_SUBSCRIBERS,
   CREDIT_COSTS,
   CREDIT_PACKS,
+  FOUNDING_FREE_DAYS,
+  FOUNDING_MEMBER_LIMIT,
+  FOUNDING_REFERRAL_TOTAL_DAYS,
   INVITE_BONUS_CREDITS,
   PLANS,
   SHORTS_VIDEO_ENABLED,
   planDisplayName,
 } from "@/lib/billing/plans";
 import { countActiveSubscribers } from "@/lib/account-store";
+import { getFoundingStatus } from "@/lib/billing/founding";
 
 export async function GET() {
   const account = await getSessionAccount();
@@ -39,6 +43,7 @@ export async function GET() {
   }
 
   const activeSubscribers = await countActiveSubscribers();
+  const founding = await getFoundingStatus();
 
   return NextResponse.json({
     account,
@@ -55,6 +60,12 @@ export async function GET() {
       planDisplayName: planDisplayName(account.plan),
       activeSubscribers,
       companyThreshold: COMPANY_THRESHOLD_SUBSCRIBERS,
+      founding: {
+        ...founding,
+        memberLimit: FOUNDING_MEMBER_LIMIT,
+        freeDays: FOUNDING_FREE_DAYS,
+        referralTotalDays: FOUNDING_REFERRAL_TOTAL_DAYS,
+      },
     },
   });
 }
