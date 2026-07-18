@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 // Video rendering (voiceover + AI images + video clips + ffmpeg) can take
 // several minutes; this requires a paid Vercel plan with an extended
 // function duration (see README "Vercel'e Deploy").
-export const maxDuration = 800;
+export const maxDuration = 300;
 
 function isPlausibleShortsScript(value: unknown): value is ShortsScript {
   if (!value || typeof value !== "object") return false;
