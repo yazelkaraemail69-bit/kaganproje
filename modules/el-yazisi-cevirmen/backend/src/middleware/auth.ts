@@ -10,9 +10,10 @@ const SHARED_SECRET_HEADER = "x-app-secret";
  * senaryoda bunun yerine JWT/oturum tabanli bir auth katmani kullanilmalidir.
  */
 export function requireAppSecret(req: Request, res: Response, next: NextFunction) {
-  const provided = req.header(SHARED_SECRET_HEADER);
+  const provided = (req.header(SHARED_SECRET_HEADER) ?? "").replace(/^\uFEFF/, "").trim();
+  const expected = env.APP_SHARED_SECRET.replace(/^\uFEFF/, "").trim();
 
-  if (!provided || provided !== env.APP_SHARED_SECRET) {
+  if (!provided || provided !== expected) {
     res.status(401).json({ error: "Yetkisiz istek: gecersiz veya eksik uygulama anahtari." });
     return;
   }

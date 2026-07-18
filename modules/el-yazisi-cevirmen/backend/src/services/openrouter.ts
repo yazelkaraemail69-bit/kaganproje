@@ -91,13 +91,17 @@ export async function callOpenRouterChat(params: {
     max_tokens: maxTokens,
   };
 
+  const apiKey = env.OPENROUTER_API_KEY.replace(/^\uFEFF/, "").trim();
+  const siteUrl = env.OPENROUTER_SITE_URL.replace(/^\uFEFF/, "").trim() || "https://el-yaz-s-okuyucu-ve-evirici.vercel.app";
+  const appName = env.OPENROUTER_APP_NAME.replace(/^\uFEFF/, "").trim() || "El Yazisi Cevirmen";
+
   const response = await fetch(OPENROUTER_CHAT_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
-      "HTTP-Referer": env.OPENROUTER_SITE_URL,
-      "X-Title": env.OPENROUTER_APP_NAME,
+      Authorization: `Bearer ${apiKey}`,
+      "HTTP-Referer": siteUrl,
+      "X-Title": appName,
     },
     body: JSON.stringify(body),
   });

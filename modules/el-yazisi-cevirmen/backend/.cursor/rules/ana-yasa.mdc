@@ -1,0 +1,11 @@
+---
+description: El Yazisi Cevirmen ana yasasi (modul ici)
+globs: "**/*"
+alwaysApply: true
+---
+
+# Ana Yasa
+
+Cok formatli belge ceviri/donusum: PDF, DOCX, XLSX, CSV, TXT, MD, HTML, SRT/VTT, el yazisi, Google kayit transkripti.
+Cikis: TXT, MD, DOCX, PDF, XLSX, CSV, HTML, SRT/VTT.
+Akis: algila → cikar → cevir → donustur → teslim. Yapi ve terminoloji korunur; API anahtari istemcide olmaz.

@@ -3,68 +3,131 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>El Yazisi Cevirmen</title>
+    <title>El Yazısı Okuyucu ve Çevirici</title>
+    <!-- Google Fonts Integration -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
+    <!-- Drag and Drop Full Screen Overlay -->
+    <div id="drag-drop-overlay" class="drag-drop-overlay hidden">
+      <div class="drag-drop-msg">
+        <span class="drag-drop-icon">📥</span>
+        <h3>Dosyaları Buraya Bırakın</h3>
+        <p>Fotoğrafları veya belgeleri sürükleyerek anında yükleyebilirsiniz.</p>
+      </div>
+    </div>
+
+    <!-- Lightbox Image Viewer Modal -->
+    <div id="lightbox-modal" class="lightbox-modal hidden" role="dialog" aria-modal="true" aria-label="Görsel Yakınlaştırıcı">
+      <button type="button" class="lightbox-close" id="lightbox-close" aria-label="Kapat">&times;</button>
+      <div class="lightbox-content-wrapper" id="lightbox-content-wrapper">
+        <img id="lightbox-img" class="lightbox-img" src="" alt="Yüklenen Görsel" />
+      </div>
+      <div class="lightbox-controls">
+        <button type="button" id="lightbox-zoom-out" class="lightbox-btn" title="Uzaklaştır">➖</button>
+        <button type="button" id="lightbox-zoom-reset" class="lightbox-btn" title="Sıfırla">🔄</button>
+        <button type="button" id="lightbox-zoom-in" class="lightbox-btn" title="Yakınlaştır">➕</button>
+      </div>
+    </div>
+
     <div class="app">
       <header class="header">
-        <h1>El Yazisi Cevirmen</h1>
-        <p id="header-subtitle">Ne yapmak istediginizi secin.</p>
+        <div class="header-container">
+          <div>
+            <h1>El Yazısı Çevirmen</h1>
+            <p id="header-subtitle">El yazısı, belge, tablo ve transkript — çevir ve dönüştür.</p>
+          </div>
+          <!-- Theme Switcher Button -->
+          <button type="button" id="theme-toggle-btn" class="theme-toggle-btn" aria-label="Temayı Değiştir" title="Temayı Değiştir">
+            <span class="theme-icon theme-icon-light">☀️</span>
+            <span class="theme-icon theme-icon-dark">🌙</span>
+          </button>
+        </div>
       </header>
 
       <div id="setup-banner" class="setup-banner hidden" role="alert">
-        <strong>API anahtari eksik:</strong>
-        OCR ve ceviri calismaz. <code>backend/.env</code> dosyasindaki
-        <code>OPENROUTER_API_KEY</code> degerini
+        <strong>API anahtarı eksik:</strong>
+        OCR ve çeviri çalışmaz. <code>backend/.env</code> dosyasındaki
+        <code>OPENROUTER_API_KEY</code> değerini
         <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">openrouter.ai/keys</a>
-        adresinden aldiginiz anahtarla degistirin, ardindan sunucuyu yeniden baslatin.
+        adresinden aldığınız anahtarla değiştirin, ardından sunucuyu yeniden başlatın.
       </div>
 
       <div id="server-banner" class="setup-banner server-banner hidden" role="alert">
-        <strong>Sunucuya baglanilamadi.</strong>
-        Backend kapali olabilir. PowerShell'de su komutlari calistirin:
+        <strong>Sunucuya bağlanılamadı.</strong>
+        Backend kapalı olabilir. PowerShell'de şu komutları çalıştırın:
         <code>cd backend</code> → <code>npm run dev</code>
-        — ardindan sayfayi yenileyin.
+        — ardından sayfayı yenileyin.
       </div>
 
-      <nav id="steps-nav" class="steps hidden" aria-label="Adimlar">
-        <button type="button" class="step-tab" data-step="1">1. Yukle</button>
-        <button type="button" class="step-tab" data-step="2">2. Duzenle</button>
-        <button type="button" class="step-tab" data-step="3">3. Cevir</button>
-        <button type="button" class="step-tab" data-step="4">4. Aktar</button>
+      <!-- Modern Visual Stepper Tracker -->
+      <nav id="steps-nav" class="steps-nav-container hidden" aria-label="Adımlar">
+        <div class="steps-progress-bar">
+          <div id="steps-progress-line" class="steps-progress-line"></div>
+        </div>
+        <div class="steps">
+          <button type="button" class="step-tab" data-step="1">
+            <span class="step-num">1</span>
+            <span class="step-label">Yükle</span>
+          </button>
+          <button type="button" class="step-tab" data-step="2">
+            <span class="step-num">2</span>
+            <span class="step-label">Düzenle</span>
+          </button>
+          <button type="button" class="step-tab" data-step="3">
+            <span class="step-num">3</span>
+            <span class="step-label">Çevir</span>
+          </button>
+          <button type="button" class="step-tab" data-step="4">
+            <span class="step-num">4</span>
+            <span class="step-label">Aktar</span>
+          </button>
+        </div>
       </nav>
 
       <main>
-        <!-- Adim 0: Akis secimi -->
+        <!-- Adım 0: Akış seçimi -->
         <section id="step-0" class="panel active">
           <h2>Ne yapmak istiyorsunuz?</h2>
-          <p class="hint">Ihtiyaciniza uygun islemi secin.</p>
+          <p class="hint">İhtiyacınıza uygun işlemi seçin.</p>
 
           <div class="workflow-grid">
             <button type="button" class="workflow-card" data-workflow="handwriting">
               <span class="workflow-icon" aria-hidden="true">✍️</span>
-              <h3>El Yazisini Dijitallestir</h3>
+              <h3>El Yazısını Dijitalleştir</h3>
               <p>
-                El yazisi notlarinizi fotograf cekerek bilgisayar metnine cevirin.
-                TXT, PDF veya DOCX olarak kaydedin. Isterseniz baska dile de cevirin.
+                El yazısı notlarınızın fotoğrafını çekerek bilgisayar metnine çevirin.
+                En fazla 25 fotoğraf; isterseniz başka dile çevirip TXT, PDF, DOCX ve daha fazlasına aktarın.
               </p>
-              <span class="workflow-tag">Fotograf → Metin → Dosya</span>
+              <span class="workflow-tag">Fotoğraf → Metin → Dosya</span>
             </button>
 
-            <button type="button" class="workflow-card" data-workflow="pdf-translate">
+            <button type="button" class="workflow-card" data-workflow="document-convert">
               <span class="workflow-icon" aria-hidden="true">📄</span>
-              <h3>PDF'i Baska Dile Cevir</h3>
+              <h3>Belge Çevir &amp; Dönüştür</h3>
               <p>
-                Metin iceren bir PDF yukleyin, icerigi duzenleyin ve istediginiz dile
-                cevirin. Sonucu TXT, PDF veya DOCX olarak indirin.
+                PDF, Word, Excel yükleyin veya en fazla 25 sayfa fotoğrafı çekin; başka dile
+                çevirin; TXT, MD, DOCX, PDF, XLSX, CSV, HTML, SRT/VTT olarak indirin.
               </p>
-              <span class="workflow-tag">PDF → Ceviri → Dosya</span>
+              <span class="workflow-tag">Dosya/Fotoğraf → Çeviri → Dosya</span>
+            </button>
+
+            <button type="button" class="workflow-card" data-workflow="transcript">
+              <span class="workflow-icon" aria-hidden="true">🎙️</span>
+              <h3>Transkript / Google Kayıt</h3>
+              <p>
+                Transkript dosyası yükleyin veya en fazla 25 sayfa fotoğrafı çekin;
+                düzenli rapora çevirin; DOCX, MD veya SRT/VTT olarak kaydedin.
+              </p>
+              <span class="workflow-tag">Dosya/Fotoğraf → Rapor → Dosya</span>
             </button>
           </div>
         </section>
 
-        <!-- Adim 1 -->
+        <!-- Adım 1 -->
         <section id="step-1" class="panel">
           <label class="model-picker-label">
             AI Modeli
@@ -72,130 +135,161 @@
           </label>
           <p id="model-hint" class="mode-hint"></p>
 
-            <div id="upload-handwriting">
-            <h2>El yazisi fotografi yukleyin</h2>
-            <p class="hint">En fazla 25 fotograf. Her biri icin ayri panel acilir.</p>
+          <div id="upload-images">
+            <h2 id="upload-images-title">Fotoğraf yükleyin</h2>
+            <p id="upload-images-hint" class="hint">En fazla 25 fotoğraf. Her biri için ayrı panel açılır.</p>
 
             <label class="lang-hint-label">
-              Yazinin dili
+              Yazının dili
               <select id="source-lang-hint">
-                <option value="tr" selected>Turkce</option>
-                <option value="en">Ingilizce</option>
-                <option value="ar">Arapca</option>
-                <option value="fa">Farsca (Persce)</option>
-                <option value="ru">Rusca</option>
-                <option value="az">Azerbaycan Turkcesi</option>
+                <option value="tr" selected>Türkçe</option>
+                <option value="en">İngilizce</option>
+                <option value="ar">Arapça</option>
+                <option value="fa">Farsça (Persçe)</option>
+                <option value="ru">Rusça</option>
+                <option value="az">Azerbaycan Türkçesi</option>
                 <option value="el">Yunanca</option>
                 <option value="bg">Bulgarca</option>
-                <option value="ka">Gurcuce</option>
+                <option value="ka">Gürcüce</option>
                 <option value="hy">Ermenice</option>
                 <option value="uk">Ukraynaca</option>
                 <option value="ro">Romence</option>
-                <option value="ku">Kurtce</option>
+                <option value="ku">Kürtçe</option>
                 <option value="de">Almanca</option>
-                <option value="fr">Fransizca</option>
-                <option value="es">Ispanyolca</option>
-                <option value="it">Italyanca</option>
-                <option value="zh">Cince</option>
+                <option value="fr">Fransızca</option>
+                <option value="es">İspanyolca</option>
+                <option value="it">İtalyanca</option>
+                <option value="zh">Çince</option>
                 <option value="ja">Japonca</option>
                 <option value="ko">Korece</option>
-                <option value="">Otomatik algila</option>
+                <option value="">Otomatik algıla</option>
               </select>
             </label>
 
-            <div class="upload-area">
+            <div class="upload-area" id="image-upload-area">
               <input type="file" id="image-input" accept="image/*" multiple hidden />
               <div id="preview-box" class="preview-box empty">
-                <span id="preview-placeholder">Henuz fotograf secilmedi (en fazla 25)</span>
+                <div class="preview-placeholder-content">
+                  <span class="upload-cloud-icon">☁️</span>
+                  <span id="preview-placeholder">Henüz fotoğraf seçilmedi (Sürükleyip bırakabilirsiniz)</span>
+                </div>
                 <div id="preview-grid" class="preview-grid" hidden></div>
               </div>
               <p id="image-count" class="image-count" hidden></p>
               <div id="photo-upload-panels" class="photo-panels" hidden></div>
-              <button type="button" id="pick-image-btn" class="btn primary">Fotograf Ekle</button>
-              <button type="button" id="clear-images-btn" class="btn secondary full" hidden>Tumunu Temizle</button>
+              <div class="upload-actions-row">
+                <button type="button" id="pick-image-btn" class="btn primary">Fotoğraf Ekle</button>
+                <button type="button" id="clear-images-btn" class="btn secondary" hidden>Tümünü Temizle</button>
+              </div>
             </div>
 
             <button type="button" id="ocr-btn" class="btn primary full" disabled>Metni Tara</button>
           </div>
 
-          <div id="upload-pdf" hidden>
-            <h2>PDF dosyasi yukleyin</h2>
-            <p class="hint">
-              Metin iceren PDF dosyalari desteklenir (en fazla 100 sayfa). Taranmis
-              (gorsel) PDF'ler icin el yazisi akisini kullanin.
+          <p id="upload-document-divider" class="upload-divider" hidden>veya dosya yükleyin</p>
+
+          <div id="upload-document" hidden>
+            <h2 id="document-upload-title">Belge yükleyin</h2>
+            <p id="document-upload-hint" class="hint">
+              Desteklenen: PDF, DOCX, XLSX, XLS, CSV, TXT, MD, HTML, SRT, VTT, RTF
+              (en fazla ~4 MB).
             </p>
 
-            <div class="upload-area">
-              <input type="file" id="pdf-input" accept="application/pdf,.pdf" hidden />
-              <div id="pdf-preview-box" class="preview-box empty pdf-preview">
-                <span id="pdf-preview-placeholder">Henuz PDF secilmedi</span>
-                <div id="pdf-file-info" class="pdf-file-info" hidden>
+            <div class="upload-area" id="document-upload-area">
+              <input
+                type="file"
+                id="document-input"
+                accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.md,.html,.htm,.srt,.vtt,.rtf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/csv,text/markdown,text/html,text/vtt"
+                hidden
+              />
+              <div id="document-preview-box" class="preview-box empty pdf-preview">
+                <div class="preview-placeholder-content">
+                  <span class="upload-cloud-icon">📄</span>
+                  <span id="document-preview-placeholder">Henüz dosya seçilmedi (Sürükleyip bırakabilirsiniz)</span>
+                </div>
+                <div id="document-file-info" class="pdf-file-info" hidden>
                   <span class="pdf-file-icon" aria-hidden="true">📄</span>
-                  <span id="pdf-file-name"></span>
-                  <span id="pdf-page-count" class="pdf-meta"></span>
+                  <span id="document-file-name"></span>
+                  <span id="document-file-meta" class="pdf-meta"></span>
                 </div>
               </div>
-              <button type="button" id="pick-pdf-btn" class="btn primary">PDF Sec</button>
+              <button type="button" id="pick-document-btn" class="btn primary">Dosya Seç</button>
             </div>
 
-            <button type="button" id="extract-pdf-btn" class="btn primary full" disabled>Metni Cikar</button>
+            <button type="button" id="extract-document-btn" class="btn primary full" disabled>
+              Metni Çıkar / Analiz Et
+            </button>
           </div>
 
-          <button type="button" id="back-to-choice-btn" class="btn secondary full">← Baska islem sec</button>
+          <button type="button" id="back-to-choice-btn" class="btn secondary full">← Başka işlem seç</button>
           <p id="step1-status" class="status" hidden></p>
         </section>
 
-        <!-- Adim 2 -->
+        <!-- Adım 2 -->
         <section id="step-2" class="panel">
           <div id="step2-handwriting">
             <div class="step2-toolbar">
               <div>
-                <h2>Metni duzenleyin</h2>
-                <p id="step2-hint" class="hint">Her fotograf icin ayri panelde metni kontrol edin.</p>
+                <h2>Metni düzenleyin</h2>
+                <p id="step2-hint" class="hint">Her fotoğraf için ayrı panelde metni kontrol edin.</p>
               </div>
-              <button type="button" id="rescan-all-btn" class="btn secondary" hidden>Tumunu yeniden tara</button>
+              <button type="button" id="rescan-all-btn" class="btn secondary" hidden>Tümünü yeniden tara</button>
             </div>
             <div id="photo-edit-panels" class="photo-panels"></div>
             <details class="combined-preview" id="combined-preview" open>
-              <summary>Birlestirilmis metin onizleme</summary>
-              <textarea id="edited-text" rows="8" readonly placeholder="Fotograflar tarandikca burada birlesir..."></textarea>
+              <summary>Birleştirilmiş metin önizleme</summary>
+              <div class="textarea-container">
+                <textarea id="edited-text" rows="8" readonly placeholder="Fotoğraflar tarandıkça burada birleşir..."></textarea>
+                <button type="button" class="copy-btn" data-target="edited-text" title="Panoya Kopyala">
+                  <span class="copy-icon">📋</span>
+                  <span class="copy-text">Kopyala</span>
+                </button>
+              </div>
             </details>
           </div>
+
           <div id="step2-pdf" hidden>
-            <h2>Metni duzenleyin</h2>
-            <p id="step2-pdf-hint" class="hint">PDF'den cikarilan metni kontrol edip duzeltin.</p>
-            <textarea id="edited-text-pdf" rows="14" placeholder="Metin burada gorunecek..."></textarea>
+            <h2>Metni düzenleyin</h2>
+            <p id="step2-pdf-hint" class="hint">Çıkarılan metni kontrol edip düzeltin.</p>
+            <p id="document-kind-badge" class="mode-hint" hidden></p>
+            <div class="textarea-container">
+              <textarea id="edited-text-pdf" rows="14" placeholder="Metin burada görünecek..."></textarea>
+              <button type="button" class="copy-btn" data-target="edited-text-pdf" title="Panoya Kopyala">
+                <span class="copy-icon">📋</span>
+                <span class="copy-text">Kopyala</span>
+              </button>
+            </div>
           </div>
-          <button type="button" id="to-translate-btn" class="btn primary full">Devam Et: Cevir</button>
+          <button type="button" id="to-translate-btn" class="btn primary full">Devam Et: Çevir</button>
         </section>
 
-        <!-- Adim 3 -->
+        <!-- Adım 3 -->
         <section id="step-3" class="panel">
-          <h2>Cevirin</h2>
-          <p id="step3-hint" class="hint">Kaynak ve hedef dili secin.</p>
+          <h2>Çevirin</h2>
+          <p id="step3-hint" class="hint">Kaynak ve hedef dili seçin.</p>
           <div class="row">
             <label>
               Kaynak dil
               <select id="source-lang">
-                <option value="auto">Otomatik Algila</option>
-                <option value="tr">Turkce</option>
-                <option value="en">Ingilizce</option>
-                <option value="ar">Arapca</option>
-                <option value="fa">Farsca (Persce)</option>
-                <option value="ru">Rusca</option>
-                <option value="az">Azerbaycan Turkcesi</option>
+                <option value="auto">Otomatik Algıla</option>
+                <option value="tr">Türkçe</option>
+                <option value="en">İngilizce</option>
+                <option value="ar">Arapça</option>
+                <option value="fa">Farsça (Persçe)</option>
+                <option value="ru">Rusça</option>
+                <option value="az">Azerbaycan Türkçesi</option>
                 <option value="el">Yunanca</option>
                 <option value="bg">Bulgarca</option>
-                <option value="ka">Gurcuce</option>
+                <option value="ka">Gürcüce</option>
                 <option value="hy">Ermenice</option>
                 <option value="uk">Ukraynaca</option>
                 <option value="ro">Romence</option>
-                <option value="ku">Kurtce</option>
+                <option value="ku">Kürtçe</option>
                 <option value="de">Almanca</option>
-                <option value="fr">Fransizca</option>
-                <option value="es">Ispanyolca</option>
-                <option value="it">Italyanca</option>
-                <option value="zh">Cince</option>
+                <option value="fr">Fransızca</option>
+                <option value="es">İspanyolca</option>
+                <option value="it">İtalyanca</option>
+                <option value="zh">Çince</option>
                 <option value="ja">Japonca</option>
                 <option value="ko">Korece</option>
               </select>
@@ -203,67 +297,92 @@
             <label>
               Hedef dil
               <select id="target-lang">
-                <option value="en">Ingilizce</option>
-                <option value="tr">Turkce</option>
-                <option value="ar">Arapca</option>
-                <option value="fa">Farsca (Persce)</option>
-                <option value="ru">Rusca</option>
-                <option value="az">Azerbaycan Turkcesi</option>
+                <option value="en">İngilizce</option>
+                <option value="tr">Türkçe</option>
+                <option value="ar">Arapça</option>
+                <option value="fa">Farsça (Persçe)</option>
+                <option value="ru">Rusça</option>
+                <option value="az">Azerbaycan Türkçesi</option>
                 <option value="el">Yunanca</option>
                 <option value="bg">Bulgarca</option>
-                <option value="ka">Gurcuce</option>
+                <option value="ka">Gürcüce</option>
                 <option value="hy">Ermenice</option>
                 <option value="uk">Ukraynaca</option>
                 <option value="ro">Romence</option>
-                <option value="ku">Kurtce</option>
+                <option value="ku">Kürtçe</option>
                 <option value="de">Almanca</option>
-                <option value="fr">Fransizca</option>
-                <option value="es">Ispanyolca</option>
-                <option value="it">Italyanca</option>
-                <option value="zh">Cince</option>
+                <option value="fr">Fransızca</option>
+                <option value="es">İspanyolca</option>
+                <option value="it">İtalyanca</option>
+                <option value="zh">Çince</option>
                 <option value="ja">Japonca</option>
                 <option value="ko">Korece</option>
               </select>
             </label>
           </div>
           <div id="photo-translate-panels" class="photo-panels" hidden></div>
-          <button type="button" id="translate-btn" class="btn primary full">Cevir</button>
+          <button type="button" id="translate-btn" class="btn primary full">Çevir</button>
           <button type="button" id="skip-translate-btn" class="btn secondary full" hidden>
-            Ceviri yapmadan devam et
+            Çeviri yapmadan devam et
           </button>
           <div id="translation-result" class="result-box" hidden>
-            <h3>Ceviri (birlestirilmis)</h3>
-            <p id="translated-text"></p>
+            <div class="result-box-header">
+              <h3>Çeviri (Birleştirilmiş)</h3>
+              <button type="button" class="copy-btn" data-target="translated-text" title="Panoya Kopyala">
+                <span class="copy-icon">📋</span>
+                <span class="copy-text">Kopyala</span>
+              </button>
+            </div>
+            <div class="translated-text-wrapper">
+              <p id="translated-text"></p>
+            </div>
           </div>
-          <button type="button" id="to-export-btn" class="btn secondary full" disabled>Devam Et: Disa Aktar</button>
+          <button type="button" id="to-export-btn" class="btn secondary full" disabled>Devam Et: Dışa Aktar</button>
           <p id="step3-status" class="status" hidden></p>
         </section>
 
-        <!-- Adim 4 -->
+        <!-- Adım 4 -->
         <section id="step-4" class="panel">
-          <h2>Disa aktarin</h2>
+          <h2>Dışa aktarın</h2>
           <div id="photo-export-panels" class="photo-panels" hidden></div>
           <div id="export-combined" class="preview-text">
-            <h3 id="export-original-label">Orijinal</h3>
-            <p id="export-original"></p>
-            <div id="export-translated-section">
-              <h3 id="export-translated-label">Ceviri</h3>
-              <p id="export-translated"></p>
+            <div class="export-section">
+              <div class="export-header-row">
+                <h3 id="export-original-label">Orijinal</h3>
+                <button type="button" class="copy-btn mini" data-target="export-original" title="Kopyala">
+                  <span class="copy-icon">📋</span>
+                </button>
+              </div>
+              <p id="export-original" class="export-block"></p>
+            </div>
+            <div id="export-translated-section" class="export-section">
+              <div class="export-header-row">
+                <h3 id="export-translated-label">Çeviri</h3>
+                <button type="button" class="copy-btn mini" data-target="export-translated" title="Kopyala">
+                  <span class="copy-icon">📋</span>
+                </button>
+              </div>
+              <p id="export-translated" class="export-block"></p>
             </div>
           </div>
           <div class="export-buttons">
-            <button type="button" id="export-txt-btn" class="btn primary">TXT indir</button>
-            <button type="button" id="export-pdf-btn" class="btn primary">PDF indir</button>
-            <button type="button" id="export-docx-btn" class="btn primary">DOCX indir</button>
+            <button type="button" id="export-txt-btn" class="btn primary">TXT</button>
+            <button type="button" id="export-md-btn" class="btn primary">MD</button>
+            <button type="button" id="export-docx-btn" class="btn primary">DOCX</button>
+            <button type="button" id="export-pdf-btn" class="btn primary">PDF</button>
+            <button type="button" id="export-xlsx-btn" class="btn primary" hidden>XLSX</button>
+            <button type="button" id="export-csv-btn" class="btn primary" hidden>CSV</button>
+            <button type="button" id="export-html-btn" class="btn primary" hidden>HTML</button>
+            <button type="button" id="export-srt-btn" class="btn primary" hidden>SRT</button>
+            <button type="button" id="export-vtt-btn" class="btn primary" hidden>VTT</button>
           </div>
-          <button type="button" id="restart-btn" class="btn secondary full">Yeni Dokuman</button>
+          <button type="button" id="restart-btn" class="btn secondary full">Yeni Doküman</button>
           <p id="step4-status" class="status" hidden></p>
         </section>
       </main>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
     <script src="/config.js"></script>
     <script src="/app.js"></script>
   </body>

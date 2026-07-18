@@ -1,14 +1,17 @@
 {
-  "name": "el-yazisi-cevirmen-backend",
+  "name": "el-yazisi-cevirmen",
   "version": "1.0.0",
   "private": true,
-  "description": "El yazisi OCR/HTR ve ceviri islemleri icin OpenRouter proxy backend'i",
+  "description": "El yazisi OCR/HTR ve ceviri — OpenRouter proxy + web arayuzu (Vercel uyumlu)",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": "24.x"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -17,7 +20,10 @@
     "express": "^4.19.2",
     "express-rate-limit": "^7.4.0",
     "helmet": "^7.1.0",
+    "jspdf": "^2.5.1",
+    "mammoth": "^1.12.0",
     "sharp": "^0.33.5",
+    "xlsx": "^0.18.5",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -25,6 +31,7 @@
     "@types/express": "^4.17.21",
     "@types/node": "^20.14.10",
     "@types/sharp": "^0.32.0",
+    "@types/xlsx": "^0.0.35",
     "tsx": "^4.16.2",
     "typescript": "^5.5.3"
   }

@@ -4,13 +4,17 @@ import Link from "next/link";
 import { useMemo } from "react";
 
 const ELYAZISI_PORT = 4000;
+const ELYAZISI_REMOTE = process.env.NEXT_PUBLIC_ELYAZISI_URL?.replace(/\/$/, "");
 
 export function ElyazisiEmbed() {
   const appUrl = useMemo(() => {
+    if (ELYAZISI_REMOTE) return ELYAZISI_REMOTE;
     if (typeof window === "undefined") return `http://localhost:${ELYAZISI_PORT}`;
     const host = window.location.hostname || "localhost";
     return `http://${host}:${ELYAZISI_PORT}`;
   }, []);
+
+  const isRemote = Boolean(ELYAZISI_REMOTE);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -19,11 +23,17 @@ export function ElyazisiEmbed() {
           El yazısı fotoğraflarını metne çevirin, düzenleyin, çevirin ve TXT / PDF / DOCX olarak
           kaydedin. En fazla 25 fotoğraf desteklenir.
         </p>
-        <p className="mt-2 text-sm text-slate-500">
-          Modül çalışmıyorsa önce{" "}
-          <code className="rounded bg-white px-1.5 py-0.5 text-xs">modules/el-yazisi-cevirmen/BASLAT-ELYAZISI.bat</code>{" "}
-          dosyasını çalıştırın (port {ELYAZISI_PORT}).
-        </p>
+        {!isRemote && (
+          <p className="mt-2 text-sm text-slate-500">
+            Modül çalışmıyorsa önce{" "}
+            <code className="rounded bg-white px-1.5 py-0.5 text-xs">
+              modules/el-yazisi-cevirmen/BASLAT-ELYAZISI.bat
+            </code>{" "}
+            dosyasını çalıştırın (port {ELYAZISI_PORT}). Production için{" "}
+            <code className="rounded bg-white px-1.5 py-0.5 text-xs">NEXT_PUBLIC_ELYAZISI_URL</code>{" "}
+            ile Vercel adresini verin.
+          </p>
+        )}
         <Link
           href={appUrl}
           target="_blank"

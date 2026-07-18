@@ -2,6 +2,8 @@ import { Router } from "express";
 import { z } from "zod";
 import { isAllowedPaidModel } from "../config/paidModels";
 import { runTranslatePipeline } from "../pipeline/runTranslate";
+import { translateTables } from "../pipeline/runTranslateTables";
+import { translateSegments } from "../pipeline/runTranslateSegments";
 import { friendlyOpenRouterError } from "../utils/openRouterErrors";
 import type { OcrDocument } from "../types/ocrDocument";
 
@@ -33,12 +35,27 @@ const ocrDocumentSchema = z
   })
   .optional();
 
+const tableSchema = z.object({
+  name: z.string(),
+  headers: z.array(z.string()),
+  rows: z.array(z.array(z.string())),
+});
+
+const segmentSchema = z.object({
+  start: z.string().optional(),
+  end: z.string().optional(),
+  speaker: z.string().optional(),
+  text: z.string(),
+});
+
 const translateRequestSchema = z.object({
   text: z.string().min(1, "text zorunludur"),
   sourceLang: z.string().min(1, "sourceLang zorunludur"),
   targetLang: z.string().min(1, "targetLang zorunludur"),
   model: z.string().optional(),
   document: ocrDocumentSchema,
+  tables: z.array(tableSchema).optional(),
+  segments: z.array(segmentSchema).optional(),
 });
 
 translateRouter.post("/", async (req, res) => {
@@ -48,7 +65,15 @@ translateRouter.post("/", async (req, res) => {
     return;
   }
 
-  const { text, sourceLang, targetLang, model: requestedModel, document } = parsed.data;
+  const {
+    text,
+    sourceLang,
+    targetLang,
+    model: requestedModel,
+    document,
+    tables,
+    segments,
+  } = parsed.data;
 
   if (requestedModel && !isAllowedPaidModel(requestedModel)) {
     res.status(400).json({ error: "Gecersiz model secimi." });
@@ -69,11 +94,42 @@ translateRouter.post("/", async (req, res) => {
         : undefined,
     });
 
+    let translatedTables = tables;
+    let translatedSegments = segments;
+    let tableModelLabel: string | undefined;
+    let segmentModelLabel: string | undefined;
+
+    if (tables?.length) {
+      const tableResult = await translateTables({
+        tables,
+        sourceLang,
+        targetLang,
+        model: requestedModel,
+      });
+      translatedTables = tableResult.tables;
+      tableModelLabel = tableResult.modelLabel;
+    }
+
+    if (segments?.length) {
+      const segmentResult = await translateSegments({
+        segments,
+        sourceLang,
+        targetLang,
+        model: requestedModel,
+      });
+      translatedSegments = segmentResult.segments;
+      segmentModelLabel = segmentResult.modelLabel;
+    }
+
     res.json({
       translatedText: result.translatedText,
       document: result.document,
+      translatedTables,
+      translatedSegments,
       modelUsed: result.modelUsed,
       modelLabel: result.modelLabel,
+      tableModelLabel,
+      segmentModelLabel,
       selectedModel: result.selectedModel,
     });
   } catch (error) {

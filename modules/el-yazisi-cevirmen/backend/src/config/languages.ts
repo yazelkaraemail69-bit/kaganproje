@@ -57,7 +57,9 @@ export const OCR_LANGUAGE_HINT_CODES = [
 ] as const;
 
 /** El yazisi is akisinda tek seferde yuklenebilecek max fotograf */
-export const MAX_HANDWRITING_IMAGES = 25;
+export const MAX_UPLOAD_IMAGES = 25;
+/** @deprecated use MAX_UPLOAD_IMAGES */
+export const MAX_HANDWRITING_IMAGES = MAX_UPLOAD_IMAGES;
 
 /** PDF ceviri akisinda islenebilecek max sayfa */
 export const MAX_PDF_PAGES = 100;

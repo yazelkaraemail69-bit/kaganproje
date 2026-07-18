@@ -1,12 +1,21 @@
 const MAX_IMAGES = window.APP_CONFIG?.maxImages || 25;
 const MAX_PDF_PAGES = window.APP_CONFIG?.maxPdfPages || 100;
+/** Vercel istek govdesi ~4.5MB; base64 ~%33 buyur → guvenli dosya limiti */
+const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
+
+const DOCUMENT_ACCEPT_ALL =
+  ".pdf,.docx,.xlsx,.xls,.csv,.txt,.md,.html,.htm,.srt,.vtt,.rtf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/csv,text/markdown,text/html,text/vtt";
+const DOCUMENT_ACCEPT_TRANSCRIPT = ".txt,.md,.srt,.vtt,.html,.htm,text/plain,text/markdown,text/vtt";
 
 const state = {
   workflow: null,
   selectedModel: null,
   images: [],
-  pdfFile: null,
-  pdfPageCount: 0,
+  documentFile: null,
+  documentMeta: null,
+  documentKind: null,
+  documentTables: null,
+  documentSegments: null,
   editedText: "",
   translatedText: "",
   skippedTranslation: false,
@@ -20,16 +29,119 @@ const WORKFLOW_META = {
     step2Hint: "Tarama sonucunu kontrol edip duzeltin.",
     exportTitle: "El Yazisi Cevirmen",
     exportFilename: "el-yazisi",
+    imageUploadTitle: "El yazisi fotografi yukleyin",
+    imageUploadHint: "En fazla 25 fotograf. Her biri icin ayri panel acilir.",
   },
-  "pdf-translate": {
-    subtitle: "PDF dosyanizi baska bir dile cevirin.",
-    step1Label: "1. PDF",
-    step3Hint: "PDF icerigini hedef dile cevirin.",
-    step2Hint: "PDF'den cikarilan metni kontrol edip duzeltin.",
-    exportTitle: "PDF Cevirisi",
-    exportFilename: "pdf-cevirisi",
+  "document-convert": {
+    subtitle: "PDF, Word, Excel ve diger belgeleri cevirip istediginiz formata donusturun.",
+    step1Label: "1. Yukle",
+    step3Hint: "Belge icerigini hedef dile cevirin veya atlayin.",
+    step2Hint: "Cikarilan metni / tabloyu kontrol edip duzeltin.",
+    exportTitle: "Belge Cevirisi",
+    exportFilename: "belge-cevirisi",
+    uploadTitle: "Belge dosyasi yukleyin",
+    uploadHint:
+      "Desteklenen: PDF, DOCX, XLSX, XLS, CSV, TXT, MD, HTML, SRT, VTT, RTF (en fazla ~3 MB).",
+    imageUploadTitle: "Belge / sayfa fotografi yukleyin",
+    imageUploadHint:
+      "Taranmis sayfalar veya el yazisi fotograflari — en fazla 25. Asagidan dosya da yukleyebilirsiniz.",
+  },
+  transcript: {
+    subtitle: "Google Meet / Recorder ve benzeri transkriptleri duzenli rapora cevirin.",
+    step1Label: "1. Yukle",
+    step3Hint: "Transkripti hedef dile cevirin veya atlayin.",
+    step2Hint: "Zaman damgali metni kontrol edin; gerekirse duzenleyin.",
+    exportTitle: "Transkript Raporu",
+    exportFilename: "transkript",
+    uploadTitle: "Transkript dosyasi yukleyin",
+    uploadHint: "TXT, MD, SRT, VTT veya Meet/Recorder disa aktarimi (metin).",
+    imageUploadTitle: "Transkript / sayfa fotografi yukleyin",
+    imageUploadHint:
+      "Fotograf cekerek metin cikarin — en fazla 25. Asagidan dosya da yukleyebilirsiniz.",
   },
 };
+
+function isDocumentWorkflow() {
+  return state.workflow === "document-convert" || state.workflow === "transcript";
+}
+
+function hasUploadedImages() {
+  return state.images.length > 0;
+}
+
+function usesImagePanels() {
+  return hasUploadedImages();
+}
+
+function updateDocumentInputAccept() {
+  const input = document.getElementById("document-input");
+  if (!input) return;
+  input.accept = state.workflow === "transcript" ? DOCUMENT_ACCEPT_TRANSCRIPT : DOCUMENT_ACCEPT_ALL;
+}
+
+function updateExportButtonsVisibility() {
+  const show = (id, visible) => {
+    const el = document.getElementById(id);
+    if (el) el.hidden = !visible;
+  };
+
+  const kind = state.documentKind;
+  const wf = state.workflow;
+
+  const defaults = {
+    txt: true,
+    md: true,
+    docx: true,
+    pdf: true,
+    xlsx: false,
+    csv: false,
+    html: false,
+    srt: false,
+    vtt: false,
+  };
+
+  let formats = { ...defaults };
+
+  if (wf === "document-convert") {
+    formats = { txt: true, md: true, docx: true, pdf: true, xlsx: true, csv: true, html: true, srt: false, vtt: false };
+    if (kind === "table") {
+      formats.xlsx = true;
+      formats.csv = true;
+    }
+    if (kind === "subtitle" || kind === "transcript") {
+      formats.srt = true;
+      formats.vtt = true;
+    }
+  } else if (wf === "transcript") {
+    formats = { txt: true, md: true, docx: true, pdf: true, xlsx: false, csv: false, html: true, srt: true, vtt: true };
+  }
+
+  show("export-txt-btn", formats.txt);
+  show("export-md-btn", formats.md);
+  show("export-docx-btn", formats.docx);
+  show("export-pdf-btn", formats.pdf);
+  show("export-xlsx-btn", formats.xlsx);
+  show("export-csv-btn", formats.csv);
+  show("export-html-btn", formats.html);
+  show("export-srt-btn", formats.srt);
+  show("export-vtt-btn", formats.vtt);
+}
+
+function buildExportPayload() {
+  const meta = getExportMeta();
+  const translated = hasActiveTranslation();
+  const sourceLang = document.getElementById("source-lang")?.value;
+  const targetLang = document.getElementById("target-lang")?.value;
+  return {
+    title: meta.exportTitle,
+    originalText: state.editedText,
+    translatedText: translated ? state.translatedText : undefined,
+    sourceLang: sourceLang || undefined,
+    targetLang: translated ? targetLang || undefined : undefined,
+    tables: state.documentTables || undefined,
+    segments: state.documentSegments || undefined,
+  };
+}
 
 function getSelectedModel() {
   return document.getElementById("ai-model")?.value || state.selectedModel || window.APP_CONFIG?.defaultModel;
@@ -97,7 +209,9 @@ async function apiPost(path, body) {
 
 function showStep(step) {
   document.querySelectorAll(".step-tab").forEach((tab) => {
-    tab.classList.toggle("active", tab.dataset.step === String(step));
+    const tabStep = Number(tab.dataset.step);
+    tab.classList.toggle("active", tabStep === step);
+    tab.classList.toggle("completed", tabStep < step);
   });
   document.querySelectorAll(".panel").forEach((panel) => {
     panel.classList.toggle("active", panel.id === `step-${step}`);
@@ -108,6 +222,11 @@ function showStep(step) {
     stepsNav.classList.add("hidden");
   } else {
     stepsNav.classList.remove("hidden");
+    const progressLine = document.getElementById("steps-progress-line");
+    if (progressLine) {
+      const percentage = ((step - 1) / 3) * 100;
+      progressLine.style.width = `${percentage}%`;
+    }
   }
 }
 
@@ -152,10 +271,23 @@ function updateWorkflowUI() {
   const step1Tab = document.querySelector('.step-tab[data-step="1"]');
   if (step1Tab) step1Tab.textContent = meta.step1Label;
 
-  const isHandwriting = state.workflow === "handwriting";
-  document.getElementById("upload-handwriting").hidden = !isHandwriting;
-  document.getElementById("upload-pdf").hidden = isHandwriting;
-  document.getElementById("skip-translate-btn").hidden = !isHandwriting;
+  const isDocument = isDocumentWorkflow();
+  document.getElementById("upload-images").hidden = false;
+  document.getElementById("upload-document").hidden = !isDocument;
+  document.getElementById("upload-document-divider").hidden = !isDocument;
+  document.getElementById("skip-translate-btn").hidden = false;
+
+  document.getElementById("upload-images-title").textContent =
+    meta.imageUploadTitle || "Fotograf yukleyin";
+  document.getElementById("upload-images-hint").textContent =
+    meta.imageUploadHint || `En fazla ${MAX_IMAGES} fotograf.`;
+
+  if (isDocument) {
+    document.getElementById("document-upload-title").textContent = meta.uploadTitle || "Belge yukleyin";
+    document.getElementById("document-upload-hint").textContent =
+      meta.uploadHint || "Desteklenen dosya turlerini yukleyin.";
+    updateDocumentInputAccept();
+  }
   updateStep2Layout();
 }
 
@@ -259,7 +391,11 @@ function syncCombinedTranslation() {
 }
 
 function getActiveEditedText() {
-  if (state.workflow === "pdf-translate") {
+  if (hasUploadedImages()) {
+    syncCombinedText();
+    return state.editedText;
+  }
+  if (isDocumentWorkflow()) {
     return document.getElementById("edited-text-pdf")?.value.trim() ?? state.editedText;
   }
   syncCombinedText();
@@ -302,8 +438,8 @@ function photoPanelHtml(img, index, mode) {
         </div>
         <div class="photo-panel-body">
           <div class="photo-panel-head">
-            <p class="photo-panel-title">Fotograf ${index + 1}</p>
-            <span class="photo-panel-status ${statusClass}">${statusLabel(img.status)}</span>
+            <p class="photo-panel-title">Fotoğraf ${index + 1}</p>
+            <span class="photo-panel-status ${statusClass}">${statusLabel(img.status) === "Taraniyor..." ? "Taranıyor..." : statusLabel(img.status) === "Tamam" ? "Tamam" : statusLabel(img.status) === "Hata" ? "Hata" : "Hazır"}</span>
             ${confidenceBadgeHtml(img)}
           </div>
           <p class="hint" style="margin:0">${escapeHtml(img.name)}</p>
@@ -315,8 +451,8 @@ function photoPanelHtml(img, index, mode) {
               : ""
           }
           <div class="photo-panel-actions">
-            <button type="button" class="btn secondary" data-action="scan-one" data-id="${img.id}">Bu fotografi tara</button>
-            <button type="button" class="btn secondary" data-action="remove" data-id="${img.id}">Kaldir</button>
+            <button type="button" class="btn secondary" data-action="scan-one" data-id="${img.id}">Bu fotoğrafı tara</button>
+            <button type="button" class="btn secondary" data-action="remove" data-id="${img.id}">Kaldır</button>
           </div>
           ${img.errorMessage ? `<p class="photo-panel-error">${escapeHtml(img.errorMessage)}</p>` : ""}
         </div>
@@ -324,6 +460,27 @@ function photoPanelHtml(img, index, mode) {
   }
 
   if (mode === "edit") {
+    if (img.status === "scanning") {
+      return `
+        <article class="photo-panel is-scanning" data-id="${img.id}">
+          <div class="photo-panel-thumb">
+            <span class="photo-panel-num">${index + 1}</span>
+            <img src="${img.previewUrl}" alt="Sayfa ${index + 1}" />
+          </div>
+          <div class="photo-panel-body">
+            <div class="photo-panel-head">
+              <p class="photo-panel-title">Sayfa ${index + 1}</p>
+              <span class="photo-panel-status scanning">Taranıyor...</span>
+            </div>
+            <div class="skeleton-body" style="width:100%; margin-top:8px;">
+              <div class="skeleton-line title"></div>
+              <div class="skeleton-line text-1"></div>
+              <div class="skeleton-line text-2"></div>
+              <div class="skeleton-line text-3"></div>
+            </div>
+          </div>
+        </article>`;
+    }
     return `
       <article class="photo-panel ${panelClass}" data-id="${img.id}">
         <div class="photo-panel-thumb">
@@ -333,10 +490,10 @@ function photoPanelHtml(img, index, mode) {
         <div class="photo-panel-body">
           <div class="photo-panel-head">
             <p class="photo-panel-title">Sayfa ${index + 1}</p>
-            <span class="photo-panel-status ${statusClass}">${statusLabel(img.status)}</span>
+            <span class="photo-panel-status ${statusClass}">${statusLabel(img.status) === "Taraniyor..." ? "Taranıyor..." : statusLabel(img.status) === "Tamam" ? "Tamam" : statusLabel(img.status) === "Hata" ? "Hata" : "Hazır"}</span>
             ${confidenceBadgeHtml(img)}
           </div>
-          <textarea class="photo-panel-text" data-id="${img.id}" rows="6" placeholder="Bu fotografin metni...">${escapeHtml(img.text ?? "")}</textarea>
+          <textarea class="photo-panel-text" data-id="${img.id}" rows="6" placeholder="Bu fotoğrafın metni...">${escapeHtml(img.text ?? "")}</textarea>
           ${confidenceLinesHtml(img)}
           <div class="photo-panel-actions">
             <button type="button" class="btn secondary" data-action="rescan-one" data-id="${img.id}">Yeniden tara</button>
@@ -356,9 +513,9 @@ function photoPanelHtml(img, index, mode) {
       </div>
       <div class="photo-panel-body">
         <div class="photo-panel-head">
-          <p class="photo-panel-title">Sayfa ${index + 1} ceviri</p>
+          <p class="photo-panel-title">Sayfa ${index + 1} Çeviri</p>
         </div>
-        <p class="translate-panel-result ${translated ? "" : "empty"}" data-translate-result="${img.id}">${translated ? escapeHtml(translated) : "Henuz cevrilmedi"}</p>
+        <p class="translate-panel-result ${translated ? "" : "empty"}" data-translate-result="${img.id}">${translated ? escapeHtml(translated) : "Henüz çevrilmedi"}</p>
       </div>
     </article>`;
 }
@@ -427,7 +584,7 @@ function getExportContent() {
   }
   return {
     text: state.editedText,
-    title: state.workflow === "pdf-translate" ? "Orijinal PDF Metni" : "Dijitallestirilmis Metin",
+    title: isDocumentWorkflow() ? "Orijinal Belge Metni" : "Dijitallestirilmis Metin",
   };
 }
 
@@ -436,7 +593,7 @@ function renderExportPanels() {
   const combined = document.getElementById("export-combined");
   if (!container) return;
 
-  const show = state.workflow === "handwriting" && state.images.length > 0;
+  const show = usesImagePanels();
   container.hidden = !show;
   if (combined) combined.hidden = show;
 
@@ -475,7 +632,7 @@ function renderTranslatePanels() {
   const resultBox = document.getElementById("translation-result");
   if (!container) return;
 
-  const show = state.workflow === "handwriting" && state.images.length > 0;
+  const show = usesImagePanels();
   container.hidden = !show;
   if (resultBox) resultBox.hidden = show;
 
@@ -488,11 +645,12 @@ function renderTranslatePanels() {
 }
 
 function updateStep2Layout() {
-  const isHandwriting = state.workflow === "handwriting";
-  document.getElementById("step2-handwriting").hidden = !isHandwriting;
-  document.getElementById("step2-pdf").hidden = isHandwriting;
-  if (!isHandwriting) {
-    document.getElementById("step2-pdf-hint").textContent = WORKFLOW_META["pdf-translate"].step2Hint;
+  const showImagePanels = usesImagePanels();
+  document.getElementById("step2-handwriting").hidden = !showImagePanels;
+  document.getElementById("step2-pdf").hidden = showImagePanels;
+  if (!showImagePanels) {
+    document.getElementById("step2-pdf-hint").textContent =
+      WORKFLOW_META[state.workflow]?.step2Hint || "Metni kontrol edin.";
   }
 }
 
@@ -730,26 +888,61 @@ imageInput.addEventListener("change", async () => {
   imageInput.value = "";
 });
 
-// --- PDF sec ---
-const pdfInput = document.getElementById("pdf-input");
-const pdfPreviewBox = document.getElementById("pdf-preview-box");
-const pdfPreviewPlaceholder = document.getElementById("pdf-preview-placeholder");
-const pdfFileInfo = document.getElementById("pdf-file-info");
-const extractPdfBtn = document.getElementById("extract-pdf-btn");
+// --- Belge / transkript sec ---
+const documentInput = document.getElementById("document-input");
+const documentPreviewBox = document.getElementById("document-preview-box");
+const documentPreviewPlaceholder = document.getElementById("document-preview-placeholder");
+const documentFileInfo = document.getElementById("document-file-info");
+const extractDocumentBtn = document.getElementById("extract-document-btn");
 
-document.getElementById("pick-pdf-btn").addEventListener("click", () => pdfInput.click());
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      const base64 = result.includes(",") ? result.split(",")[1] : result;
+      resolve(base64);
+    };
+    reader.onerror = () => reject(new Error("Dosya okunamadi."));
+    reader.readAsDataURL(file);
+  });
+}
 
-pdfInput.addEventListener("change", () => {
-  const file = pdfInput.files?.[0];
+function kindLabel(kind) {
+  const map = {
+    plain: "Duz metin / belge",
+    table: "Tablo",
+    transcript: "Transkript",
+    subtitle: "Altyazi",
+    mixed: "Karisik",
+    unknown: "Bilinmiyor",
+  };
+  return map[kind] || kind || "";
+}
+
+document.getElementById("pick-document-btn").addEventListener("click", () => documentInput.click());
+
+documentInput.addEventListener("change", () => {
+  const file = documentInput.files?.[0];
   if (!file) return;
 
-  state.pdfFile = file;
-  document.getElementById("pdf-file-name").textContent = file.name;
-  document.getElementById("pdf-page-count").textContent = "";
-  pdfPreviewPlaceholder.hidden = true;
-  pdfFileInfo.hidden = false;
-  pdfPreviewBox.classList.remove("empty");
-  extractPdfBtn.disabled = false;
+  if (file.size > MAX_UPLOAD_BYTES) {
+    setStatus(
+      "step1-status",
+      `Dosya cok buyuk (${Math.round(file.size / 1024 / 1024)} MB). En fazla ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} MB yukleyin.`,
+      true
+    );
+    documentInput.value = "";
+    return;
+  }
+
+  state.documentFile = file;
+  document.getElementById("document-file-name").textContent = file.name;
+  document.getElementById("document-file-meta").textContent = `${Math.round(file.size / 1024)} KB`;
+  documentPreviewPlaceholder.hidden = true;
+  documentFileInfo.hidden = false;
+  documentPreviewBox.classList.remove("empty");
+  extractDocumentBtn.disabled = false;
   setStatus("step1-status", "");
 });
 
@@ -758,35 +951,74 @@ document.getElementById("rescan-all-btn")?.addEventListener("click", () => scanA
 // --- OCR (el yazisi) ---
 ocrBtn.addEventListener("click", () => scanAllImages());
 
-// --- PDF metin cikarma ---
-extractPdfBtn.addEventListener("click", async () => {
-  if (!state.pdfFile) return;
+// --- Belge metin cikarma ---
+extractDocumentBtn.addEventListener("click", async () => {
+  if (!state.documentFile) return;
 
-  extractPdfBtn.disabled = true;
-  setStatus("step1-status", "PDF'den metin cikariliyor...");
+  extractDocumentBtn.disabled = true;
+  setStatus("step1-status", "Dosya analiz ediliyor...");
 
   try {
-    const result = await extractPdfText(state.pdfFile);
-    state.pdfPageCount = result.pageCount;
-    state.editedText = result.text;
+    const file = state.documentFile;
+    const ext = (file.name.split(".").pop() || "").toLowerCase();
+    let text = "";
+    let kind = "plain";
+    let tables = null;
+    let segments = null;
+    let metaLabel = ext.toUpperCase();
+
+    if (ext === "pdf") {
+      const result = await extractPdfText(file);
+      text = result.text;
+      metaLabel = result.truncated
+        ? `${result.pageCount} / ${result.totalPages} sayfa`
+        : `${result.pageCount} sayfa`;
+      if (!text.trim()) {
+        throw new Error(
+          "PDF'den metin cikarilamadi. Taranmis PDF ise 'El Yazisini Dijitallestir' akisini kullanin."
+        );
+      }
+    } else {
+      const base64 = await fileToBase64(file);
+      const data = await apiPost("/api/convert/extract", {
+        filename: file.name,
+        mimeType: file.type,
+        base64,
+      });
+      text = data.text || "";
+      kind = data.kind || "plain";
+      tables = data.tables || null;
+      segments = data.segments || null;
+      metaLabel = `${(data.sourceFormat || ext).toUpperCase()} · ${kindLabel(kind)}`;
+      if (data.warnings?.length) {
+        console.warn(data.warnings);
+        setStatus("step1-status", `Uyari: ${data.warnings[0]}`, false);
+      }
+      if (!text.trim() && !tables?.length) {
+        throw new Error("Dosyadan metin cikarilamadi.");
+      }
+    }
+
+    state.documentMeta = metaLabel;
+    state.documentKind = kind;
+    state.documentTables = tables;
+    state.documentSegments = segments;
+    state.editedText = text;
     state.translatedText = "";
     state.skippedTranslation = false;
-    const pageLabel = result.truncated
-      ? `${result.pageCount} / ${result.totalPages} sayfa (limit: ${MAX_PDF_PAGES})`
-      : `${result.pageCount} sayfa`;
-    document.getElementById("pdf-page-count").textContent = pageLabel;
-    document.getElementById("edited-text-pdf").value = result.text;
-    setStatus(
-      "step1-status",
-      result.truncated
-        ? `Ilk ${result.pageCount} sayfa islendi (PDF ${result.totalPages} sayfa).`
-        : `${result.pageCount} sayfadan metin cikarildi.`
-    );
+    document.getElementById("document-file-meta").textContent = metaLabel;
+    document.getElementById("edited-text-pdf").value = text;
+    const badge = document.getElementById("document-kind-badge");
+    if (badge) {
+      badge.hidden = false;
+      badge.textContent = `Algilanan yapi: ${kindLabel(kind)}`;
+    }
+    setStatus("step1-status", "Icerik cikarildi. Duzenleyip ceviriye gecebilirsiniz.");
     showStep(2);
   } catch (error) {
     setStatus("step1-status", error.message, true);
   } finally {
-    extractPdfBtn.disabled = false;
+    extractDocumentBtn.disabled = false;
   }
 });
 
@@ -810,7 +1042,7 @@ translateBtn.addEventListener("click", async () => {
   const sourceLang = document.getElementById("source-lang").value;
   const targetLang = document.getElementById("target-lang").value;
   const model = getSelectedModel();
-  const usePanels = state.workflow === "handwriting" && state.images.length > 0;
+  const usePanels = usesImagePanels();
 
   translateBtn.disabled = true;
   setStatus("step3-status", "Ceviri yapiliyor...");
@@ -848,12 +1080,20 @@ translateBtn.addEventListener("click", async () => {
         sourceLang,
         targetLang,
         model,
+        tables: state.documentTables?.length ? state.documentTables : undefined,
+        segments: state.documentSegments?.length ? state.documentSegments : undefined,
       });
       state.translatedText = result.translatedText;
+      if (result.translatedTables?.length) state.documentTables = result.translatedTables;
+      if (result.translatedSegments?.length) state.documentSegments = result.translatedSegments;
       if (state.images.length === 1) state.images[0].translatedText = result.translatedText;
       document.getElementById("translated-text").textContent = result.translatedText;
       document.getElementById("translation-result").hidden = false;
-      setStatus("step3-status", `Tamamlandi (${result.modelLabel ?? result.modelUsed})`);
+      const extra =
+        result.tableModelLabel || result.segmentModelLabel
+          ? ` (+ tablo/segment)`
+          : "";
+      setStatus("step3-status", `Tamamlandi (${result.modelLabel ?? result.modelUsed}${extra})`);
     }
 
     state.skippedTranslation = false;
@@ -882,7 +1122,7 @@ toExportBtn.addEventListener("click", goToExport);
 
 function goToExport() {
   state.editedText = getActiveEditedText();
-  if (state.workflow === "handwriting" && state.images.length > 0) {
+  if (usesImagePanels()) {
     syncCombinedTranslation();
   }
   const hasTranslation = hasActiveTranslation();
@@ -896,8 +1136,11 @@ function goToExport() {
   const translatedSection = document.getElementById("export-translated-section");
   translatedSection.hidden = !hasTranslation;
 
-  document.getElementById("export-original-label").textContent =
-    state.workflow === "pdf-translate" ? "Orijinal PDF Metni" : "Dijitallestirilmis Metin";
+  document.getElementById("export-original-label").textContent = hasUploadedImages()
+    ? "Dijitallestirilmis Metin"
+    : isDocumentWorkflow()
+      ? "Orijinal Belge"
+      : "Dijitallestirilmis Metin";
   document.getElementById("export-translated-label").textContent = "Ceviri";
 
   if (hasTranslation) {
@@ -905,6 +1148,7 @@ function goToExport() {
   }
 
   renderExportPanels();
+  updateExportButtonsVisibility();
   showStep(4);
 }
 
@@ -914,71 +1158,35 @@ function downloadBlob(filename, blob) {
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
+  a.style.display = "none";
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 250);
 }
 
 function getExportMeta() {
   return WORKFLOW_META[state.workflow] ?? WORKFLOW_META.handwriting;
 }
 
-document.getElementById("export-txt-btn").addEventListener("click", () => {
-  const meta = getExportMeta();
-  const { text } = getExportContent();
-  downloadBlob(`${meta.exportFilename}.txt`, new Blob([text], { type: "text/plain;charset=utf-8" }));
-});
+document.getElementById("export-txt-btn").addEventListener("click", () => exportViaConvert("txt"));
 
-document.getElementById("export-pdf-btn").addEventListener("click", () => {
-  const meta = getExportMeta();
-  const { text, title } = getExportContent();
-
-  if (!window.jspdf?.jsPDF) {
-    setStatus("step4-status", "PDF kutuphanesi yuklenemedi. Sayfayi yenileyip tekrar deneyin.", true);
-    return;
-  }
-
-  const doc = new window.jspdf.jsPDF({ unit: "pt", format: "a4" });
-  const margin = 48;
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const maxWidth = pageWidth - margin * 2;
-  let y = margin;
-
-  function ensureSpace(lineHeight) {
-    if (y + lineHeight > pageHeight - margin) {
-      doc.addPage();
-      y = margin;
-    }
-  }
-
-  function addWrapped(content, fontSize, fontStyle) {
-    doc.setFont("helvetica", fontStyle);
-    doc.setFontSize(fontSize);
-    const lines = doc.splitTextToSize(content || "", maxWidth);
-    const lineHeight = fontSize * 1.35;
-    for (const line of lines) {
-      ensureSpace(lineHeight);
-      doc.text(line, margin, y);
-      y += lineHeight;
-    }
-  }
-
-  addWrapped(meta.exportTitle, 18, "bold");
-  y += 10;
-  addWrapped(title, 13, "bold");
-  y += 14;
-  addWrapped(text || " ", 11, "normal");
-
-  doc.save(`${meta.exportFilename}.pdf`);
-  setStatus("step4-status", "PDF indirildi.");
-});
+document.getElementById("export-pdf-btn").addEventListener("click", () => exportViaConvert("pdf"));
 
 document.getElementById("export-docx-btn").addEventListener("click", async () => {
   const meta = getExportMeta();
+  const useHandwritingLines = usesImagePanels();
+
+  if (!useHandwritingLines) {
+    await exportViaConvert("docx");
+    return;
+  }
+
   setStatus("step4-status", "DOCX olusturuluyor...");
   try {
-    const layoutLines =
-      state.workflow === "handwriting" && state.images.length > 0
+    const layoutLines = usesImagePanels()
         ? state.images.flatMap((img) => {
             const srcLines = img.document?.lines;
             if (Array.isArray(srcLines) && srcLines.length > 0) {
@@ -1018,24 +1226,56 @@ document.getElementById("export-docx-btn").addEventListener("click", async () =>
   }
 });
 
+async function exportViaConvert(format) {
+  const meta = getExportMeta();
+  setStatus("step4-status", `${format.toUpperCase()} olusturuluyor...`);
+  try {
+    const data = await apiPost("/api/convert/export", {
+      format,
+      ...buildExportPayload(),
+    });
+    const binary = atob(data.base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const ext = format === "md" ? "md" : format;
+    const filename = data.filename || `${meta.exportFilename}.${ext}`;
+    downloadBlob(filename, new Blob([bytes], { type: data.mimeType }));
+    setStatus("step4-status", `${format.toUpperCase()} indirildi.`);
+  } catch (error) {
+    setStatus("step4-status", error.message, true);
+  }
+}
+
+document.getElementById("export-md-btn")?.addEventListener("click", () => exportViaConvert("md"));
+document.getElementById("export-xlsx-btn")?.addEventListener("click", () => exportViaConvert("xlsx"));
+document.getElementById("export-csv-btn")?.addEventListener("click", () => exportViaConvert("csv"));
+document.getElementById("export-html-btn")?.addEventListener("click", () => exportViaConvert("html"));
+document.getElementById("export-srt-btn")?.addEventListener("click", () => exportViaConvert("srt"));
+document.getElementById("export-vtt-btn")?.addEventListener("click", () => exportViaConvert("vtt"));
+
 document.getElementById("restart-btn").addEventListener("click", () => {
   state.workflow = null;
   state.images = [];
-  state.pdfFile = null;
-  state.pdfPageCount = 0;
+  state.documentFile = null;
+  state.documentMeta = null;
+  state.documentKind = null;
+  state.documentTables = null;
+  state.documentSegments = null;
   state.editedText = "";
   state.translatedText = "";
   state.skippedTranslation = false;
 
   imageInput.value = "";
-  pdfInput.value = "";
+  documentInput.value = "";
   renderImagePreviews();
-  pdfPreviewPlaceholder.hidden = false;
-  pdfFileInfo.hidden = true;
-  pdfPreviewBox.classList.add("empty");
+  documentPreviewPlaceholder.hidden = false;
+  documentFileInfo.hidden = true;
+  documentPreviewBox.classList.add("empty");
 
   document.getElementById("edited-text-pdf").value = "";
   document.getElementById("edited-text").value = "";
+  const badge = document.getElementById("document-kind-badge");
+  if (badge) badge.hidden = true;
   document.getElementById("photo-edit-panels").innerHTML = "";
   document.getElementById("photo-upload-panels").innerHTML = "";
   document.getElementById("photo-translate-panels").innerHTML = "";
@@ -1045,7 +1285,7 @@ document.getElementById("restart-btn").addEventListener("click", () => {
   document.getElementById("translated-text").textContent = "";
   toExportBtn.disabled = true;
   ocrBtn.disabled = true;
-  extractPdfBtn.disabled = true;
+  extractDocumentBtn.disabled = true;
   ["step1-status", "step3-status", "step4-status"].forEach((id) => setStatus(id, ""));
   showStep(0);
 });
@@ -1058,7 +1298,191 @@ function escapeHtml(text) {
     .replace(/"/g, "&quot;");
 }
 
+// Theme Toggle Initializer
+function initTheme() {
+  const toggleBtn = document.getElementById("theme-toggle-btn");
+  if (!toggleBtn) return;
+  const currentTheme = localStorage.getItem("theme") || "light";
+  if (currentTheme === "dark") {
+    document.body.classList.add("dark-theme");
+  }
+  toggleBtn.addEventListener("click", () => {
+    document.body.classList.toggle("dark-theme");
+    const theme = document.body.classList.contains("dark-theme") ? "dark" : "light";
+    localStorage.setItem("theme", theme);
+  });
+}
+
+// Copy Buttons Initializer
+function initCopyButtons() {
+  document.addEventListener("click", async (e) => {
+    const btn = e.target.closest(".copy-btn");
+    if (!btn) return;
+    e.stopPropagation();
+    const targetId = btn.dataset.target;
+    let textToCopy = "";
+    const el = document.getElementById(targetId);
+    if (el) {
+      textToCopy = el.tagName === "TEXTAREA" || el.tagName === "INPUT" ? el.value : el.textContent || el.innerText;
+    }
+    if (!textToCopy.trim()) return;
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      const originalHTML = btn.innerHTML;
+      btn.classList.add("copied");
+      if (btn.classList.contains("mini")) {
+        btn.innerHTML = '<span class="copy-icon">✔️</span>';
+      } else {
+        btn.innerHTML = '<span class="copy-icon">✔️</span><span class="copy-text">Kopyalandı!</span>';
+      }
+      setTimeout(() => {
+        btn.classList.remove("copied");
+        btn.innerHTML = originalHTML;
+      }, 2000);
+    } catch (err) {
+      console.error("Kopyalama hatası:", err);
+    }
+  });
+}
+
+// Fullscreen Lightbox Initializer
+let lightboxScale = 1;
+let lightboxX = 0;
+let lightboxY = 0;
+let isDraggingLightbox = false;
+let startDragX = 0;
+let startDragY = 0;
+
+function initLightbox() {
+  const modal = document.getElementById("lightbox-modal");
+  const img = document.getElementById("lightbox-img");
+  const closeBtn = document.getElementById("lightbox-close");
+  const wrapper = document.getElementById("lightbox-content-wrapper");
+  const zoomIn = document.getElementById("lightbox-zoom-in");
+  const zoomOut = document.getElementById("lightbox-zoom-out");
+  const zoomReset = document.getElementById("lightbox-zoom-reset");
+  if (!modal || !img || !closeBtn) return;
+
+  closeBtn.addEventListener("click", () => {
+    modal.classList.remove("active");
+    img.src = "";
+  });
+
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal || e.target === wrapper) {
+      modal.classList.remove("active");
+      img.src = "";
+    }
+  });
+
+  const updateTransform = () => {
+    img.style.transform = `translate(${lightboxX}px, ${lightboxY}px) scale(${lightboxScale})`;
+  };
+
+  zoomIn.addEventListener("click", () => {
+    lightboxScale = Math.min(lightboxScale + 0.25, 4);
+    updateTransform();
+  });
+
+  zoomOut.addEventListener("click", () => {
+    lightboxScale = Math.max(lightboxScale - 0.25, 0.5);
+    updateTransform();
+  });
+
+  zoomReset.addEventListener("click", () => {
+    lightboxScale = 1;
+    lightboxX = 0;
+    lightboxY = 0;
+    updateTransform();
+  });
+
+  wrapper.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+    isDraggingLightbox = true;
+    startDragX = e.clientX - lightboxX;
+    startDragY = e.clientY - lightboxY;
+    wrapper.style.cursor = "grabbing";
+  });
+
+  window.addEventListener("mousemove", (e) => {
+    if (!isDraggingLightbox) return;
+    lightboxX = e.clientX - startDragX;
+    lightboxY = e.clientY - startDragY;
+    updateTransform();
+  });
+
+  window.addEventListener("mouseup", () => {
+    isDraggingLightbox = false;
+    if (wrapper) wrapper.style.cursor = "grab";
+  });
+
+  document.addEventListener("click", (e) => {
+    const thumb = e.target.closest(".photo-panel-thumb, .preview-thumb");
+    if (!thumb) return;
+    const srcImg = thumb.querySelector("img");
+    if (!srcImg) return;
+    lightboxScale = 1;
+    lightboxX = 0;
+    lightboxY = 0;
+    img.src = srcImg.src;
+    updateTransform();
+    modal.classList.add("active");
+  });
+}
+
+// Drag & Drop File Upload Initializer
+function initDragAndDrop() {
+  const dragDropOverlay = document.getElementById("drag-drop-overlay");
+  if (!dragDropOverlay) return;
+
+  window.addEventListener("dragenter", (e) => {
+    if (!state.workflow) return;
+    e.preventDefault();
+    dragDropOverlay.classList.add("active");
+  });
+
+  dragDropOverlay.addEventListener("dragover", (e) => {
+    e.preventDefault();
+  });
+
+  dragDropOverlay.addEventListener("dragleave", (e) => {
+    e.preventDefault();
+    if (e.relatedTarget === null || !dragDropOverlay.contains(e.relatedTarget)) {
+      dragDropOverlay.classList.remove("active");
+    }
+  });
+
+  dragDropOverlay.addEventListener("drop", async (e) => {
+    e.preventDefault();
+    dragDropOverlay.classList.remove("active");
+    if (!state.workflow) return;
+    const files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+
+    if (isDocumentWorkflow() && files[0].name.match(/\.(pdf|docx|xlsx|xls|csv|txt|md|html|htm|srt|vtt|rtf)$/i)) {
+      const docInput = document.getElementById("document-input");
+      if (docInput) {
+        const dt = new DataTransfer();
+        dt.items.add(files[0]);
+        docInput.files = dt.files;
+        docInput.dispatchEvent(new Event("change"));
+      }
+    } else {
+      const imageFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
+      if (imageFiles.length > 0) {
+        await addImagesFromFiles(imageFiles);
+      } else {
+        setStatus("step1-status", "Geçersiz dosya türü sürüklendi.", true);
+      }
+    }
+  });
+}
+
 // Baslangic
 initModelPicker();
 showStep(0);
 checkServerSetup();
+initTheme();
+initCopyButtons();
+initLightbox();
+initDragAndDrop();
